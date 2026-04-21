@@ -83,12 +83,16 @@ async function sha256File(p: string): Promise<string> {
 
 async function fetchRelease(tag: string): Promise<GithubAsset[]> {
   const url = `https://api.github.com/repos/FreeCAD/FreeCAD/releases/tags/${tag}`
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'buildoto-postinstall',
-      Accept: 'application/vnd.github+json',
-    },
-  })
+  // Anonymous API is capped at 60 req/hour per shared runner IP — easily hit in
+  // CI when multiple targets fetch back-to-back. Authenticate when GH_TOKEN or
+  // GITHUB_TOKEN is present to bump the limit to 5000/hour.
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
+  const headers: Record<string, string> = {
+    'User-Agent': 'buildoto-postinstall',
+    Accept: 'application/vnd.github+json',
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(url, { headers })
   if (!res.ok) throw new Error(`GitHub release ${tag} fetch failed: ${res.status} ${res.statusText}`)
   const json = (await res.json()) as { assets?: GithubAsset[] }
   if (!json.assets?.length) throw new Error(`No assets found for release ${tag}`)

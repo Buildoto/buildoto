@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Cursor for construction — Electron desktop app combining AI agent, FreeCAD 3D viewer, and GitHub versioning.",
   "type": "module",
+  "main": "out/main/index.js",
   "license": "MIT",
   "author": {
     "name": "Buildoto contributors",
