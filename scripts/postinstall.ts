@@ -160,7 +160,7 @@ async function extractSevenZip(sevenZPath: string, target: TargetKey): Promise<v
   await new Promise<void>((res, rej) => {
     seven.unpack(sevenZPath, destDir, (err: Error | null) => (err ? rej(err) : res()))
   })
-  // The 7z archive contains a single top-level folder like `FreeCAD_1.1.0-conda-Windows-x86_64-py311/`.
+  // The 7z archive contains a single top-level folder like `FreeCAD_1.1.0-Windows-x86_64-py311/`.
   // Flatten it so binaries sit directly under `resources/freecad/win32-x64/bin/`.
   const { readdir } = await import('node:fs/promises')
   const entries = await readdir(destDir)

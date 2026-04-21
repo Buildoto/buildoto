@@ -2,10 +2,10 @@
   "version": "1.1.0",
   "releaseTag": "1.1.0",
   "assetPatterns": {
-    "darwin-arm64": "FreeCAD_.*-macOS-arm64-conda\\.dmg$",
-    "darwin-x64": "FreeCAD_.*-macOS-x86_64-conda\\.dmg$",
-    "linux-x64": "FreeCAD_.*-conda-Linux-x86_64-py311\\.AppImage$",
-    "win32-x64": "FreeCAD_.*-conda-Windows-x86_64-py311\\.7z$"
+    "darwin-arm64": "FreeCAD_.*-macOS-arm64-py311\\.dmg$",
+    "darwin-x64": "FreeCAD_.*-macOS-x86_64-py311\\.dmg$",
+    "linux-x64": "FreeCAD_.*-Linux-x86_64-py311\\.AppImage$",
+    "win32-x64": "FreeCAD_.*-Windows-x86_64-py311\\.7z$"
   },
   "sha256": {}
 }
