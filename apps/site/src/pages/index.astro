@@ -1,0 +1,110 @@
+---
+import Layout from '../layouts/Layout.astro'
+import Feature from '../components/Feature.astro'
+
+const latestRelease = 'v1.0.0'
+const releaseBase = `https://github.com/buildoto/buildoto/releases/download/${latestRelease}`
+const artifacts = {
+  macArm: `${releaseBase}/Buildoto-1.0.0-arm64.dmg`,
+  macIntel: `${releaseBase}/Buildoto-1.0.0-x64.dmg`,
+  windows: `${releaseBase}/Buildoto-Setup-1.0.0.exe`,
+  linux: `${releaseBase}/Buildoto-1.0.0.AppImage`,
+}
+---
+
+<Layout title="Buildoto — Vibe-building · FreeCAD + IA">
+  <header class="hero">
+    <p class="eyebrow">Vibe-building · v1.0</p>
+    <h1>FreeCAD piloté par IA,<br />avec l'historique d'un repo Git.</h1>
+    <p class="tagline">
+      L'IDE construction pour architectes et techniciens. Un agent IA qui modélise
+      dans FreeCAD, Git qui versionne chaque modif, sources RAG vérifiables à
+      l'appui de chaque réponse.
+    </p>
+    <div class="ctas">
+      <a class="cta primary" href="/install">Télécharger Buildoto v1.0</a>
+      <a class="cta" href="/ai">Découvrir Buildoto AI</a>
+    </div>
+    <div class="downloads">
+      <a href={artifacts.macArm}>macOS (Apple Silicon)</a>
+      <span>·</span>
+      <a href={artifacts.macIntel}>macOS (Intel)</a>
+      <span>·</span>
+      <a href={artifacts.windows}>Windows</a>
+      <span>·</span>
+      <a href={artifacts.linux}>Linux</a>
+    </div>
+    <p class="version">
+      {latestRelease} — open source (MIT). Binaires non signés,
+      <a href="/install">guide d'installation par OS</a>.
+    </p>
+  </header>
+
+  <section class="features">
+    <Feature
+      title="Agent IA connecté à FreeCAD"
+      body="Décrivez votre bâtiment, l'agent génère la géométrie avec 23 outils FreeCAD structurés. Le sidecar redémarre tout seul quand FreeCAD plante."
+    />
+    <Feature
+      title="Git natif + GitHub"
+      body="Chaque modif agent est un commit. Branches, PR, historique — la collaboration en mode dev, pour le BIM."
+    />
+    <Feature
+      title="Sources RAG visibles"
+      body="Buildoto AI cite chaque source sous sa réponse : titre, licence, extrait, lien. Vérifiable en un clic."
+    />
+    <Feature
+      title="Multi-providers"
+      body="Claude, GPT, Mistral, Gemini, OpenRouter, Ollama local, ou Buildoto AI. Clé stockée dans le trousseau de l'OS."
+    />
+    <Feature
+      title="MCP intégré"
+      body="Branchez vos propres serveurs MCP pour connecter l'agent à vos outils métier (gestion doc, plans, ERP)."
+    />
+    <Feature
+      title="Quota transparent"
+      body="Le quota Buildoto AI restant est affiché en permanence. Toasts à 80 % et 100 %. Zéro surprise à la facture."
+    />
+  </section>
+
+  <section class="cta-bottom">
+    <h2>Prêt à essayer ?</h2>
+    <p>
+      100 requêtes Buildoto AI offertes chaque mois. Ou branchez votre propre clé
+      — l'app est gratuite, MIT, sans compte requis.
+    </p>
+    <a class="cta primary" href="/install">Télécharger v1.0</a>
+  </section>
+
+  <footer class="links">
+    <a href="/pricing">Tarifs</a>
+    <a href="/ai">Buildoto AI</a>
+    <a href="/install">Installer</a>
+    <a href="/faq">FAQ</a>
+    <a href="/changelog">Changelog</a>
+    <a href="/privacy">Confidentialité</a>
+    <a href="https://docs.buildoto.com">Documentation</a>
+    <a href="https://github.com/buildoto/buildoto">GitHub</a>
+  </footer>
+</Layout>
+
+<style>
+  .hero { text-align: center; padding: 5rem 1rem 3rem; max-width: 48rem; margin: 0 auto; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.8rem; color: #2563eb; font-weight: 600; margin: 0 0 1rem; }
+  .hero h1 { font-size: 3.25rem; margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+  .tagline { font-size: 1.15rem; color: #475569; margin: 1.25rem auto; max-width: 36rem; line-height: 1.5; }
+  .ctas { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0 1.25rem; }
+  .cta { padding: 0.8rem 1.5rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; text-decoration: none; color: #0f172a; font-size: 1rem; font-weight: 500; }
+  .cta.primary { background: #2563eb; color: white; border-color: #2563eb; }
+  .downloads { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; font-size: 0.85rem; color: #64748b; margin: 0.5rem 0; }
+  .downloads a { color: #64748b; }
+  .downloads span { color: #cbd5e1; }
+  .version { color: #94a3b8; font-size: 0.85rem; margin: 1rem 0 0; }
+  .version a { color: #64748b; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.25rem; padding: 3rem 1.25rem; max-width: 68rem; margin: 0 auto; }
+  .cta-bottom { text-align: center; padding: 3rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; margin: 2rem 0; }
+  .cta-bottom h2 { font-size: 1.75rem; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+  .cta-bottom p { max-width: 32rem; margin: 0 auto 1.5rem; color: #475569; }
+  .links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; padding: 2rem 1rem 4rem; font-size: 0.9rem; }
+  .links a { color: #64748b; }
+</style>

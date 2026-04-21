@@ -1,0 +1,24 @@
+---
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import Layout from '../layouts/Layout.astro'
+
+let body = 'Changelog à venir.'
+try {
+  const p = resolve(process.cwd(), '../../CHANGELOG.md')
+  body = readFileSync(p, 'utf8')
+} catch {
+  // file missing at build time — leave placeholder
+}
+---
+<Layout title="Changelog — Buildoto">
+  <main>
+    <h1>Changelog</h1>
+    <pre>{body}</pre>
+  </main>
+</Layout>
+
+<style>
+  main { max-width: 48rem; margin: 4rem auto; padding: 0 1rem; }
+  pre { white-space: pre-wrap; font-family: "JetBrains Mono", monospace; font-size: 0.85rem; line-height: 1.6; background: #f8fafc; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+</style>

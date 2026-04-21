@@ -1,0 +1,58 @@
+{
+  "name": "buildoto",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cursor for construction — Electron desktop app combining AI agent, FreeCAD 3D viewer, and GitHub versioning.",
+  "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "Buildoto contributors",
+    "email": "hello@buildoto.com"
+  },
+  "homepage": "https://buildoto.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/buildoto/buildoto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/buildoto/buildoto/issues"
+  },
+  "engines": {
+    "node": ">=20.18.0",
+    "pnpm": ">=9.12.0"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "eslint .",
+    "type-check": "pnpm -r run type-check",
+    "postinstall": "tsx scripts/postinstall.ts",
+    "smoke": "tsx --env-file=.env.local packages/main/src/__smoke__/cube.ts",
+    "smoke:project": "tsx --env-file=.env.local packages/main/src/__smoke__/project.ts",
+    "smoke:agent": "tsx --env-file=.env.local packages/main/src/__smoke__/agent-multiprovider.ts",
+    "package": "pnpm build && electron-builder",
+    "package:mac-arm64": "tsx scripts/postinstall.ts --target=darwin-arm64 && pnpm build && electron-builder --mac --arm64",
+    "package:mac-x64": "tsx scripts/postinstall.ts --target=darwin-x64 && pnpm build && electron-builder --mac --x64",
+    "package:linux": "tsx scripts/postinstall.ts --target=linux-x64 && pnpm build && electron-builder --linux",
+    "package:win": "tsx scripts/postinstall.ts --target=win32-x64 && pnpm build && electron-builder --win"
+  },
+  "devDependencies": {
+    "7zip-min": "^1.4.5",
+    "@electron/notarize": "^2.5.0",
+    "@eslint/js": "^9.15.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "eslint": "^9.15.0",
+    "globals": "^15.14.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0",
+    "vite": "^6.0.3"
+  }
+}

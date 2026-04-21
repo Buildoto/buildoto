@@ -1,0 +1,88 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'scripts/**'
+      - 'resources/**'
+      - 'electron-builder.yml'
+      - 'electron.vite.config.ts'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/package.yml'
+
+jobs:
+  package:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macos-arm64
+            os: macos-14
+            target: darwin-arm64
+            script: package:mac-arm64
+            artifact: 'release/**/*.dmg'
+          - label: macos-x64
+            os: macos-13
+            target: darwin-x64
+            script: package:mac-x64
+            artifact: 'release/**/*.dmg'
+          - label: linux-x64
+            os: ubuntu-24.04
+            target: linux-x64
+            script: package:linux
+            artifact: 'release/**/*.AppImage'
+          - label: windows-x64
+            os: windows-2022
+            target: win32-x64
+            script: package:win
+            artifact: 'release/**/*.exe'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Cache FreeCAD downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildoto-cache/freecad
+          key: freecad-${{ matrix.target }}-${{ hashFiles('scripts/freecad-version.json') }}
+
+      - name: Install dependencies (skip native postinstall)
+        run: pnpm install --frozen-lockfile
+        env:
+          BUILDOTO_SKIP_FREECAD: '1'
+
+      - name: Download FreeCAD for ${{ matrix.target }}
+        run: pnpm exec tsx scripts/postinstall.ts --target=${{ matrix.target }}
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Build and package
+        run: pnpm ${{ matrix.script }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildoto-${{ matrix.label }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 14

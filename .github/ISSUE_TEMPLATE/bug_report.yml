@@ -1,0 +1,69 @@
+name: 🐛 Bug report
+description: Signaler un bug reproductible dans Buildoto
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de signaler un bug ! Plus votre rapport est précis, plus il sera traité vite.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de Buildoto
+      placeholder: 'v0.1.0-alpha.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Système d'exploitation
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows 10
+        - Windows 11
+        - Linux (Ubuntu)
+        - Linux (Fedora)
+        - Linux (Arch)
+        - Autre
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description du bug
+      description: Qu'est-ce qui s'est passé ? Qu'est-ce qui aurait dû se passer ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Ouvrir Buildoto
+        2. Créer un projet
+        3. Taper la commande X
+        4. Observer Y
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack trace
+      description: |
+        Ouvrez les DevTools (Affichage → Outils de développement) et copiez les erreurs de la
+        console. Ou consultez les logs du processus principal :
+        - macOS : `~/Library/Logs/Buildoto/main.log`
+        - Windows : `%APPDATA%\Buildoto\logs\main.log`
+      render: shell
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider IA utilisé (si pertinent)
+      placeholder: 'anthropic / openai / mistral / ollama / …'

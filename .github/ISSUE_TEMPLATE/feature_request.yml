@@ -1,0 +1,39 @@
+name: ✨ Feature request
+description: Proposer une nouvelle fonctionnalité
+labels: ['enhancement', 'triage']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème à résoudre
+      description: Quel cas d'usage n'est pas couvert aujourd'hui ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+      description: Comment imaginez-vous la solution ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considérées
+      description: Avez-vous envisagé d'autres approches ? Quel est leur défaut ?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Agent IA (boucle, providers, prompts)
+        - FreeCAD (outils, sidecar)
+        - Git / GitHub
+        - UI / UX
+        - MCP
+        - Packaging / updater
+        - Documentation
+        - Autre

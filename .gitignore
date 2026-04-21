@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# FreeCAD binaries — downloaded at postinstall, never committed
+resources/freecad/darwin-arm64/
+resources/freecad/darwin-x64/
+resources/freecad/linux-x64/
+resources/freecad/win32-x64/
+
+# Cache
+.cache/
+.vite/
+.electron-vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Test
+coverage/
+
+# Plans / memory
+.claude/local/

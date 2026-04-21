@@ -1,0 +1,151 @@
+---
+import Layout from '../layouts/Layout.astro'
+
+const latestRelease = 'v1.0.0'
+const releaseBase = `https://github.com/buildoto/buildoto/releases/download/${latestRelease}`
+const artifacts = {
+  macArm: `${releaseBase}/Buildoto-1.0.0-arm64.dmg`,
+  macIntel: `${releaseBase}/Buildoto-1.0.0-x64.dmg`,
+  windows: `${releaseBase}/Buildoto-Setup-1.0.0.exe`,
+  linux: `${releaseBase}/Buildoto-1.0.0.AppImage`,
+}
+const releasesPage = 'https://github.com/buildoto/buildoto/releases/latest'
+---
+
+<Layout title="Installer Buildoto — guide par OS">
+  <main>
+    <header class="intro">
+      <h1>Installer Buildoto {latestRelease}</h1>
+      <p class="lede">
+        Les binaires ne sont pas signés pour cette première version publique —
+        votre OS affichera un avertissement au premier lancement. Voici comment
+        passer outre en une minute, selon votre système.
+      </p>
+      <p class="note">
+        <strong>Pourquoi ?</strong> Les certificats Apple et EV Windows coûtent
+        environ 280&nbsp;$ par an. Nous préférons reporter cette dépense jusqu'à
+        ce que les premiers revenus la couvrent. Le code est ouvert sur
+        <a href="https://github.com/buildoto/buildoto">GitHub</a> — vous pouvez
+        vérifier les sources et compiler vous-même si vous préférez.
+      </p>
+    </header>
+
+    <section id="macos">
+      <h2>macOS (Apple Silicon &amp; Intel)</h2>
+      <ol>
+        <li>
+          Téléchargez l'archive&nbsp;:
+          <a href={artifacts.macArm}>Apple Silicon (arm64)</a> ou
+          <a href={artifacts.macIntel}>Intel (x64)</a>.
+        </li>
+        <li>Ouvrez le fichier <code>.dmg</code>, glissez Buildoto dans Applications.</li>
+        <li>
+          Dans le Finder, allez dans <em>Applications</em>. <strong>Ctrl-clic</strong>
+          sur l'icône Buildoto, puis choisissez <em>Ouvrir</em>.
+        </li>
+        <li>
+          Gatekeeper affiche&nbsp;: <em>«&nbsp;Impossible de vérifier le
+          développeur&nbsp;»</em>. Cliquez sur <strong>Ouvrir</strong>.
+        </li>
+        <li>L'autorisation est mémorisée — les lancements suivants se font normalement.</li>
+      </ol>
+      <p class="tip">
+        Astuce&nbsp;: si le bouton «&nbsp;Ouvrir&nbsp;» reste grisé, ouvrez
+        <em>Réglages Système → Confidentialité et sécurité</em> et cliquez
+        «&nbsp;Ouvrir quand même&nbsp;» à côté de Buildoto.
+      </p>
+    </section>
+
+    <section id="windows">
+      <h2>Windows 10/11 (x64)</h2>
+      <ol>
+        <li>
+          Téléchargez l'installeur&nbsp;:
+          <a href={artifacts.windows}>Buildoto-Setup-1.0.0.exe</a>.
+        </li>
+        <li>Double-cliquez sur le fichier.</li>
+        <li>
+          Windows SmartScreen affiche&nbsp;: <em>«&nbsp;Windows a protégé votre
+          ordinateur&nbsp;»</em>. Cliquez sur <strong>Informations
+          complémentaires</strong>.
+        </li>
+        <li>
+          Cliquez sur <strong>Exécuter quand même</strong> en bas de la
+          fenêtre.
+        </li>
+        <li>Suivez l'assistant NSIS — choix du dossier, installation, lancement.</li>
+      </ol>
+      <p class="tip">
+        Astuce&nbsp;: si votre antivirus bloque le fichier, ajoutez le dossier
+        d'installation à ses exclusions. Le binaire est sans signature mais son
+        empreinte SHA-256 est publiée dans la release GitHub.
+      </p>
+    </section>
+
+    <section id="linux">
+      <h2>Linux (AppImage x64)</h2>
+      <ol>
+        <li>
+          Téléchargez l'image&nbsp;:
+          <a href={artifacts.linux}>Buildoto-1.0.0.AppImage</a>.
+        </li>
+        <li>
+          Rendez-la exécutable&nbsp;:
+          <pre><code>chmod +x Buildoto-1.0.0.AppImage</code></pre>
+        </li>
+        <li>
+          Lancez-la&nbsp;:
+          <pre><code>./Buildoto-1.0.0.AppImage</code></pre>
+        </li>
+        <li>
+          Pour l'intégrer au menu d'applications, utilisez
+          <a href="https://github.com/TheAssassin/AppImageLauncher">
+            AppImageLauncher
+          </a>.
+        </li>
+      </ol>
+      <p class="tip">
+        FUSE 2 est requis. Sur Ubuntu 22.04+&nbsp;:
+        <code>sudo apt install libfuse2</code>.
+      </p>
+    </section>
+
+    <section class="checksums">
+      <h2>Vérifier l'intégrité</h2>
+      <p>
+        Les empreintes SHA-256 de chaque binaire sont publiées sur la
+        <a href={releasesPage}>page de release GitHub</a>. Pour vérifier&nbsp;:
+      </p>
+      <pre><code>{`# macOS / Linux
+shasum -a 256 Buildoto-1.0.0-arm64.dmg
+
+# Windows (PowerShell)
+Get-FileHash Buildoto-Setup-1.0.0.exe -Algorithm SHA256`}</code></pre>
+    </section>
+
+    <footer class="links">
+      <a href="/">Accueil</a>
+      <a href="/changelog">Changelog</a>
+      <a href="https://github.com/buildoto/buildoto">Code source</a>
+      <a href="https://github.com/buildoto/buildoto/issues">Signaler un bug</a>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  main { max-width: 52rem; margin: 3rem auto 5rem; padding: 0 1.25rem; line-height: 1.6; }
+  .intro { margin-bottom: 3rem; }
+  h1 { font-size: 2.25rem; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .lede { font-size: 1.1rem; color: #475569; margin: 0.5rem 0 1.5rem; }
+  .note { background: #f8fafc; border-left: 3px solid #2563eb; padding: 1rem 1.25rem; border-radius: 0 0.5rem 0.5rem 0; font-size: 0.95rem; color: #334155; }
+  section { margin: 2.5rem 0; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
+  section h2 { font-size: 1.4rem; margin-bottom: 1rem; }
+  ol { padding-left: 1.25rem; }
+  ol li { margin: 0.6rem 0; }
+  code { background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-family: "JetBrains Mono", monospace; font-size: 0.85em; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 0.9rem 1rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.85rem; }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  .tip { background: #fef9c3; border: 1px solid #fde68a; padding: 0.8rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; color: #713f12; margin-top: 1rem; }
+  .links { display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; }
+  .links a { color: #64748b; }
+</style>

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "outDir": "../../out/opencode-core",
+    "noEmit": true
+  },
+  "include": ["src/**/*"]
+}

@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-alpha.*'
+      - 'v*.*.*-beta.*'
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            package_cmd: |
+              pnpm exec tsx scripts/postinstall.ts --target=darwin-arm64
+              pnpm exec tsx scripts/postinstall.ts --target=darwin-x64
+              pnpm build
+              pnpm exec electron-builder --mac --arm64 --x64 --publish always
+          - os: windows-latest
+            package_cmd: |
+              pnpm exec tsx scripts/postinstall.ts --target=win32-x64
+              pnpm build
+              pnpm exec electron-builder --win --x64 --publish always
+          - os: ubuntu-latest
+            package_cmd: |
+              pnpm exec tsx scripts/postinstall.ts --target=linux-x64
+              pnpm build
+              pnpm exec electron-builder --linux --x64 --publish always
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Package
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          BUILDOTO_GITHUB_CLIENT_ID: ${{ secrets.BUILDOTO_GITHUB_CLIENT_ID }}
+        run: ${{ matrix.package_cmd }}

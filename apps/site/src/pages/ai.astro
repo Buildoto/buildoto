@@ -1,0 +1,163 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Buildoto AI — l'IA construction avec sources vérifiables">
+  <main>
+    <header class="intro">
+      <p class="eyebrow">Buildoto AI</p>
+      <h1>L'IA qui cite ses sources,<br />pas qui les invente.</h1>
+      <p class="lede">
+        Un LLM généraliste ne sait pas distinguer un DTU d'un forum rénovation
+        de 2009. Buildoto AI est spécialisé construction, entraîné sur un
+        corpus AEC vérifié, et <strong>cite la source exacte</strong> de
+        chaque recommandation — directement sous la réponse dans l'app.
+      </p>
+    </header>
+
+    <section class="why">
+      <h2>Pourquoi un modèle dédié construction&nbsp;?</h2>
+      <div class="grid">
+        <article>
+          <h3>Claude / GPT génériques</h3>
+          <ul class="neg">
+            <li>Répondent sur tout — y compris ce qu'ils ne savent pas.</li>
+            <li>Citent rarement leurs sources. Quand elles existent, elles hallucinent.</li>
+            <li>Connaissent peu les DTU, Eurocodes, RE2020, ACV construction.</li>
+            <li>Pas de contexte sur les habitudes d'un bureau d'étude AEC.</li>
+          </ul>
+        </article>
+        <article class="featured">
+          <h3>Buildoto AI</h3>
+          <ul class="pos">
+            <li>RAG sur un corpus AEC curé (FreeCAD wiki, OpenCASCADE, DTU/NF sélectionnés).</li>
+            <li>Chaque réponse arrive avec ses sources, cliquables dans l'app.</li>
+            <li>Deux modèles spécialisés&nbsp;: <code>buildoto-ai-v1</code> pour le dialogue, <code>buildoto-ai-code</code> pour les scripts FreeCAD.</li>
+            <li>Tuning continu sur les retours terrain (sprints alpha + bêta).</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="architecture">
+      <h2>Comment ça marche</h2>
+      <ol class="flow">
+        <li>
+          <h3>1 · Votre question part chiffrée vers <code>api.buildoto.com</code></h3>
+          <p>
+            Authentification par JWT court (5 min), renouvelé automatiquement.
+            Les requêtes ne sont pas stockées au-delà du traitement.
+          </p>
+        </li>
+        <li>
+          <h3>2 · Un RAG interroge le corpus AEC</h3>
+          <p>
+            Qdrant + embeddings Mistral récupèrent les passages pertinents
+            (wiki FreeCAD, OpenCASCADE, DTU/NF en sélection, code de la
+            construction FR, exemples projets open-source).
+          </p>
+        </li>
+        <li>
+          <h3>3 · Mistral Large génère la réponse augmentée</h3>
+          <p>
+            Le prompt système impose de citer les passages utilisés. Les
+            sources sont retournées en header <code>X-Buildoto-Sources</code>
+            ou via événement SSE dédié.
+          </p>
+        </li>
+        <li>
+          <h3>4 · L'app affiche les sources sous la réponse</h3>
+          <p>
+            Titre, licence, extrait, lien d'origine. Cliquez pour ouvrir la
+            source dans votre navigateur. Croisez toujours, surtout pour une
+            valeur réglementaire.
+          </p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="honest">
+      <h2>Ce que Buildoto AI <em>ne fait pas</em> (encore)</h2>
+      <p class="honest-intro">
+        L'honnêteté avant le marketing. Ces limites sont documentées et
+        priorisées pour les prochaines versions.
+      </p>
+      <ul>
+        <li>
+          <strong>Corpus francophone partiel.</strong> FreeCAD wiki +
+          OpenCASCADE sont en anglais. Code de la construction FR oui, mais
+          les DTU ne sont pas tous ingérés. Nous élargissons itérativement.
+        </li>
+        <li>
+          <strong>Hallucinations résiduelles possibles.</strong> Même avec
+          RAG, un LLM peut citer une source à l'appui d'un propos qu'il
+          reformule mal. <strong>Vérifiez toujours le passage cité</strong>
+          avant de l'utiliser dans un livrable.
+        </li>
+        <li>
+          <strong>Pas de collaboration multi-utilisateur.</strong> Une
+          session = un compte. Le multi-seat est prévu en v1.2 si traction.
+        </li>
+        <li>
+          <strong>Pas d'export IFC automatique.</strong> FreeCAD l'exporte
+          via menu File ; l'agent ne pilote pas encore ça nativement.
+        </li>
+      </ul>
+    </section>
+
+    <section class="cta-section">
+      <h2>Essayer gratuitement</h2>
+      <p>
+        100 requêtes offertes chaque mois — sans carte bancaire. Passez en Pro
+        si ça colle à votre flux de travail, revenez en Free sinon, ou branchez
+        votre propre clé Anthropic/OpenAI/Mistral — l'app reste la même.
+      </p>
+      <div class="ctas">
+        <a class="cta primary" href="/install">Télécharger Buildoto v1.0</a>
+        <a class="cta" href="/pricing">Voir les tarifs</a>
+      </div>
+    </section>
+
+    <footer class="links">
+      <a href="/">Accueil</a>
+      <a href="/pricing">Tarifs</a>
+      <a href="/install">Installer</a>
+      <a href="/faq">FAQ</a>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  main { max-width: 56rem; margin: 3rem auto 5rem; padding: 0 1.25rem; line-height: 1.65; }
+  .intro { text-align: center; margin-bottom: 4rem; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.8rem; color: #2563eb; font-weight: 600; margin: 0 0 0.5rem; }
+  h1 { font-size: 2.75rem; margin: 0 0 1rem; letter-spacing: -0.02em; line-height: 1.15; }
+  .lede { max-width: 42rem; margin: 1rem auto; color: #475569; font-size: 1.1rem; }
+  section { margin: 3.5rem 0; padding-top: 2rem; border-top: 1px solid #e2e8f0; }
+  section h2 { font-size: 1.6rem; margin-bottom: 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.5rem; }
+  .grid article { padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #fafafa; }
+  .grid article.featured { border-color: #2563eb; background: #fff; }
+  .grid h3 { margin: 0 0 1rem; font-size: 1.1rem; }
+  .grid ul { list-style: none; padding: 0; margin: 0; font-size: 0.95rem; color: #334155; }
+  .grid ul li { padding: 0.4rem 0 0.4rem 1.5rem; position: relative; }
+  .neg li::before { content: '✗'; position: absolute; left: 0; color: #dc2626; font-weight: 700; }
+  .pos li::before { content: '✓'; position: absolute; left: 0; color: #16a34a; font-weight: 700; }
+  .flow { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+  .flow li { padding: 1.25rem 1.5rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #fafafa; }
+  .flow h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .flow p { margin: 0; color: #475569; font-size: 0.95rem; }
+  .honest-intro { color: #475569; margin-bottom: 1.5rem; }
+  .honest ul { list-style: none; padding: 0; font-size: 0.95rem; }
+  .honest ul li { padding: 0.65rem 0 0.65rem 1.75rem; position: relative; color: #334155; }
+  .honest ul li::before { content: '—'; position: absolute; left: 0; color: #94a3b8; font-weight: 700; }
+  .cta-section { text-align: center; padding: 2.5rem 1.5rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; }
+  .cta-section h2 { border: none; padding-top: 0; }
+  .cta-section p { max-width: 36rem; margin: 0 auto 1.5rem; color: #475569; }
+  .ctas { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .cta { padding: 0.75rem 1.25rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; text-decoration: none; color: #0f172a; font-size: 0.95rem; font-weight: 500; }
+  .cta.primary { background: #2563eb; color: white; border-color: #2563eb; }
+  code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-family: "JetBrains Mono", monospace; font-size: 0.85em; }
+  .links { display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; }
+  .links a { color: #64748b; }
+</style>

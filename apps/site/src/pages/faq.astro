@@ -1,0 +1,252 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="FAQ — Buildoto">
+  <main>
+    <header class="intro">
+      <h1>Questions fréquentes</h1>
+      <p class="lede">
+        Les réponses aux questions remontées par les premiers alpha-testeurs.
+        Une question manque ? Ouvrez une
+        <a href="https://github.com/buildoto/buildoto/discussions">discussion sur GitHub</a>.
+      </p>
+    </header>
+
+    <section>
+      <h2>Le produit</h2>
+
+      <details open>
+        <summary>Buildoto remplace FreeCAD ?</summary>
+        <p>
+          Non. Buildoto <strong>embarque</strong> FreeCAD — il est bundlé dans
+          l'app (aucune installation tierce), piloté en arrière-plan par un
+          agent IA. Vous voyez la géométrie 3D dans Buildoto, mais c'est bien
+          FreeCAD qui la calcule. Vous gardez l'interop <code>.FCStd</code>,
+          STEP, IFC exportable côté FreeCAD.
+        </p>
+      </details>
+
+      <details>
+        <summary>C'est open-source ?</summary>
+        <p>
+          L'app desktop oui, licence MIT, code sur
+          <a href="https://github.com/buildoto/buildoto">GitHub</a>. Le service
+          hébergé Buildoto AI (l'API, le RAG, les modèles) est un produit
+          commercial que nous exploitons. Vous pouvez auto-héberger un
+          équivalent avec votre propre corpus — la stack (Mistral + Qdrant) est
+          documentée.
+        </p>
+      </details>
+
+      <details>
+        <summary>Quels OS sont supportés ?</summary>
+        <p>
+          macOS 12+ (Apple Silicon et Intel), Windows 10/11 x64, Linux x64
+          (AppImage). Voir la <a href="/install">page d'installation</a>. Les
+          binaires ne sont pas signés pour l'instant — l'OS affiche un
+          avertissement au premier lancement, contournable en un clic.
+        </p>
+      </details>
+
+      <details>
+        <summary>Ça fait quoi de plus qu'une macro FreeCAD avec Claude dedans ?</summary>
+        <p>
+          Un agent qui boucle sur les outils FreeCAD, voit les erreurs,
+          corrige. Un versioning Git automatique — chaque modif est un commit,
+          vous revenez en arrière sans perdre de travail. Le sidecar FreeCAD
+          qui redémarre tout seul après un segfault. Des sources RAG
+          vérifiables quand vous utilisez Buildoto AI. Et bientôt : MCP pour
+          brancher vos outils métier.
+        </p>
+      </details>
+    </section>
+
+    <section>
+      <h2>L'IA</h2>
+
+      <details>
+        <summary>Quels modèles IA je peux utiliser ?</summary>
+        <p>
+          Buildoto AI (notre service, spécialisé construction), Anthropic
+          Claude, OpenAI GPT, Mistral, Google Gemini, OpenRouter, ou Ollama en
+          local (aucun envoi externe). Vous pouvez changer à tout moment dans
+          les paramètres.
+        </p>
+      </details>
+
+      <details>
+        <summary>Pourquoi Buildoto AI plutôt que Claude directement ?</summary>
+        <p>
+          Claude répond sur tout, y compris ce qu'il ne sait pas. Buildoto AI
+          est spécialisé AEC et <strong>cite ses sources</strong> — vous voyez
+          sous chaque réponse les passages du corpus utilisés. Pour un DTU ou
+          un Eurocode, ça change tout. <a href="/ai">Plus de détails</a>.
+        </p>
+      </details>
+
+      <details>
+        <summary>L'IA peut-elle inventer des sources ?</summary>
+        <p>
+          Avec RAG, le modèle reçoit des passages réels de la base. Mais il
+          peut quand même reformuler maladroitement ou généraliser trop. La
+          règle : <strong>toujours vérifier le passage cité dans le drawer
+          sources</strong> avant de reprendre une valeur réglementaire dans un
+          livrable. Le drawer affiche l'extrait exact et un lien direct vers
+          l'origine.
+        </p>
+      </details>
+
+      <details>
+        <summary>Mes fichiers .FCStd sont envoyés au cloud ?</summary>
+        <p>
+          Non. Seul le contenu que vous tapez dans le chat transite. Les
+          fichiers restent sur votre disque. Le script Python que l'agent
+          exécute tourne en local dans le sidecar FreeCAD. Si vous utilisez
+          Ollama, rien ne sort de votre machine.
+        </p>
+      </details>
+
+      <details>
+        <summary>Vous entraînez un modèle sur mes données ?</summary>
+        <p>
+          Non. Le service Buildoto AI ne logue les requêtes que pendant le
+          traitement (latence, audit technique). Pas de fine-tuning sur vos
+          prompts. Politique détaillée dans la <a href="/privacy">page
+          confidentialité</a>.
+        </p>
+      </details>
+    </section>
+
+    <section>
+      <h2>Tarifs &amp; quota</h2>
+
+      <details>
+        <summary>C'est quoi une "requête" dans le quota ?</summary>
+        <p>
+          Un appel HTTP à <code>/v1/chat/completions</code>. Un échange dans
+          l'agent peut consommer plusieurs requêtes si l'agent enchaîne des
+          outils. En pratique une session de travail moyenne = 5-15 requêtes.
+          Le quota restant est affiché en permanence dans la status bar de
+          l'app.
+        </p>
+      </details>
+
+      <details>
+        <summary>Qu'est-ce qui se passe à 100&nbsp;% du quota ?</summary>
+        <p>
+          Free : vous recevez un 429, l'app affiche une bannière rouge vous
+          proposant de passer en Pro ou de basculer sur votre propre clé. Pro :
+          vous continuez à générer, l'excédent apparaît sur votre facture
+          Stripe le mois suivant.
+        </p>
+      </details>
+
+      <details>
+        <summary>Je peux annuler mon abonnement à tout moment ?</summary>
+        <p>
+          Oui, directement depuis le portail
+          <a href="https://app.buildoto.com/billing">app.buildoto.com/billing</a>.
+          Pas de période d'engagement, pas de frais cachés. À l'annulation
+          vous gardez l'accès Pro jusqu'à la fin du cycle de facturation en cours.
+        </p>
+      </details>
+    </section>
+
+    <section>
+      <h2>Installation &amp; sécurité</h2>
+
+      <details>
+        <summary>Pourquoi l'app n'est-elle pas signée ?</summary>
+        <p>
+          Un certificat Apple Developer coûte ~99 $/an, un EV code-signing
+          Windows ~200 $/an. Nous avons choisi de reporter cette dépense
+          jusqu'aux premiers revenus. Les binaires sont reproductibles depuis
+          le code public, et les empreintes SHA-256 sont publiées dans chaque
+          release GitHub. Guide de contournement par OS sur la
+          <a href="/install">page d'installation</a>.
+        </p>
+      </details>
+
+      <details>
+        <summary>Comment mes clés API sont stockées ?</summary>
+        <p>
+          Dans le trousseau de votre OS via <code>keytar</code> (Keychain sur
+          macOS, Credential Manager sur Windows, Secret Service sur Linux).
+          Jamais en clair dans un fichier de config. Le renderer (interface)
+          ne voit jamais les clés — seul le processus principal les lit, au
+          moment de l'appel HTTP.
+        </p>
+      </details>
+
+      <details>
+        <summary>Je peux utiliser Buildoto hors-ligne ?</summary>
+        <p>
+          Avec Ollama local, oui — installez Ollama, tirez un modèle (Llama,
+          Qwen, DeepSeek…), Buildoto le détecte. FreeCAD et Git fonctionnent
+          tous deux hors-ligne. Sans IA, l'app reste utile pour visualiser et
+          versionner des projets FreeCAD, mais l'intérêt principal c'est
+          l'agent.
+        </p>
+      </details>
+    </section>
+
+    <section>
+      <h2>Roadmap</h2>
+
+      <details>
+        <summary>Quand allez-vous supporter la collaboration multi-utilisateur ?</summary>
+        <p>
+          Pas en v1. Un projet = un compte aujourd'hui. Multi-seat prévu en
+          v1.2 si la traction le justifie — on préfère bien faire une chose à
+          la fois qu'empiler des features à moitié finies.
+        </p>
+      </details>
+
+      <details>
+        <summary>Et l'export IFC piloté par l'agent ?</summary>
+        <p>
+          FreeCAD sait exporter en IFC (menu File → Export). L'agent ne pilote
+          pas encore ça nativement — la priorité v1.1 est d'y ajouter un outil
+          dédié pour que vous puissiez demander « exporte en IFC pour
+          Archicad ».
+        </p>
+      </details>
+
+      <details>
+        <summary>Linux .deb / flatpak ?</summary>
+        <p>
+          AppImage en v1, <code>.deb</code> + flatpak prévus en v1.1. En
+          attendant,
+          <a href="https://github.com/TheAssassin/AppImageLauncher">
+            AppImageLauncher
+          </a>
+          règle l'intégration au menu desktop.
+        </p>
+      </details>
+    </section>
+
+    <footer class="links">
+      <a href="/">Accueil</a>
+      <a href="/pricing">Tarifs</a>
+      <a href="/ai">Buildoto AI</a>
+      <a href="/install">Installer</a>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  main { max-width: 48rem; margin: 3rem auto 5rem; padding: 0 1.25rem; line-height: 1.65; }
+  .intro { margin-bottom: 3rem; }
+  h1 { font-size: 2.25rem; margin: 0 0 0.75rem; letter-spacing: -0.02em; }
+  .lede { color: #475569; font-size: 1.05rem; }
+  section { margin: 2.5rem 0; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
+  section h2 { font-size: 1.5rem; margin-bottom: 1rem; }
+  details { padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0; }
+  details summary { cursor: pointer; font-weight: 500; padding: 0.35rem 0; font-size: 1rem; }
+  details summary:hover { color: #2563eb; }
+  details p { margin: 0.75rem 0 0; color: #475569; font-size: 0.95rem; }
+  code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-family: "JetBrains Mono", monospace; font-size: 0.85em; }
+  .links { display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; }
+  .links a { color: #64748b; }
+</style>

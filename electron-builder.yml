@@ -1,0 +1,76 @@
+appId: com.buildoto.app
+productName: Buildoto
+copyright: Copyright © 2026 Buildoto contributors
+directories:
+  output: release/${version}
+  buildResources: build
+files:
+  - out/**/*
+  - node_modules/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/{.eslintrc,.prettierrc,tsconfig.json,tsconfig.*.json}'
+
+extraResources:
+  - from: resources/freecad/${os}-${arch}
+    to: freecad
+    filter:
+      - '**/*'
+
+asar: true
+asarUnpack:
+  - resources/**
+
+# Register `buildoto://` so the OS can hand off OAuth-lite callbacks
+# (buildoto://auth?code=…) to the running app. See packages/main/src/index.ts
+# for the runtime side (setAsDefaultProtocolClient + open-url + second-instance).
+protocols:
+  - name: Buildoto deep link
+    schemes:
+      - buildoto
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  icon: build/icon.icns
+afterSign: build/notarize.cjs
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  verifyUpdateCodeSignature: false
+  icon: build/icon.ico
+  sign: build/win-sign.cjs
+  signingHashAlgorithms:
+    - sha256
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Development
+  maintainer: Buildoto contributors <hello@buildoto.app>
+  icon: build/icons
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+publish:
+  provider: github
+  owner: buildoto
+  repo: buildoto
+  releaseType: release
+  channel: stable

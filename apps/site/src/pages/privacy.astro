@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+<Layout title="Confidentialité — Buildoto">
+  <main>
+    <h1>Confidentialité</h1>
+    <p>Buildoto est une application de bureau. Par défaut, tout fonctionne localement.</p>
+
+    <h2>Télémétrie (opt-in)</h2>
+    <p>
+      Si vous activez la télémétrie anonyme, Buildoto envoie des événements agrégés à PostHog Cloud EU :
+      étapes d'onboarding, tours d'agent (durée, succès/échec, providers utilisés), plateforme, version.
+      Identifiant : UUID v4 local, chiffré via safeStorage, non lié à votre compte GitHub ou email.
+      Rétention : 90 jours.
+    </p>
+    <p>
+      Ne sont <strong>jamais</strong> transmis : le contenu de vos projets, prompts, messages de
+      l'agent, clés API, fichiers, chemins locaux, email, nom.
+    </p>
+
+    <h2>Rapports d'incident (opt-in)</h2>
+    <p>
+      Si activés, les stack traces de crash sont envoyées à Sentry. Les chemins locaux et clés API
+      sont scrubés côté client avant envoi.
+    </p>
+
+    <h2>GitHub</h2>
+    <p>
+      Si vous connectez GitHub via OAuth Device Flow, le token d'accès est stocké chiffré sur votre
+      machine. Il n'est jamais transmis à Buildoto.
+    </p>
+
+    <h2>Modèles IA</h2>
+    <p>
+      Les requêtes envoyées aux providers (Anthropic, OpenAI, Mistral, etc.) sortent directement de
+      votre machine vers leurs APIs. Buildoto ne proxie ni n'enregistre rien.
+    </p>
+
+    <h2>Contact</h2>
+    <p>Pour toute question : <a href="mailto:hello@buildoto.com">hello@buildoto.com</a></p>
+  </main>
+</Layout>
+
+<style>
+  main { max-width: 42rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
+  h1 { font-size: 2.5rem; }
+  h2 { margin-top: 2rem; font-size: 1.3rem; }
+</style>
