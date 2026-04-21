@@ -72,5 +72,5 @@ publish:
   provider: github
   owner: buildoto
   repo: buildoto
-  releaseType: release
+  releaseType: draft
   channel: stable
