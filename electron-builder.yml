@@ -11,12 +11,9 @@ files:
   - '!**/*.map'
   - '!**/{.eslintrc,.prettierrc,tsconfig.json,tsconfig.*.json}'
 
-extraResources:
-  - from: resources/freecad/${os}-${arch}
-    to: freecad
-    filter:
-      - '**/*'
-
+# Per-platform extraResources because electron-builder's ${os} macro expands
+# to `mac`/`win`/`linux`, while scripts/postinstall.ts writes to the Node.js
+# platform names `darwin-*`/`win32-*`/`linux-*`. Keep them in sync by hand.
 asar: true
 asarUnpack:
   - resources/**
@@ -41,6 +38,11 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   icon: build/icon.icns
+  extraResources:
+    - from: resources/freecad/darwin-${arch}
+      to: freecad
+      filter:
+        - '**/*'
 afterSign: build/notarize.cjs
 
 win:
@@ -53,6 +55,11 @@ win:
   sign: build/win-sign.cjs
   signingHashAlgorithms:
     - sha256
+  extraResources:
+    - from: resources/freecad/win32-${arch}
+      to: freecad
+      filter:
+        - '**/*'
 
 linux:
   target:
@@ -62,6 +69,11 @@ linux:
   category: Development
   maintainer: Buildoto contributors <hello@buildoto.app>
   icon: build/icons
+  extraResources:
+    - from: resources/freecad/linux-${arch}
+      to: freecad
+      filter:
+        - '**/*'
 
 nsis:
   oneClick: false
