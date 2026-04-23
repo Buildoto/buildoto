@@ -240,5 +240,10 @@ def _main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+# freecadcmd loads this file as a module (sets __name__ to "runner"), so the
+# standard `__name__ == "__main__"` guard never fires. Boot unconditionally
+# once the env var is present — that var is only set by the Electron sidecar
+# manager, so running the file by hand (e.g. `python3 runner.py`) still stays
+# import-safe for developers poking at it.
+if os.environ.get("BUILDOTO_SIDECAR_PORT"):
     sys.exit(_main())

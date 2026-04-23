@@ -40,9 +40,14 @@ export const COMMIT_MESSAGE_MODEL = 'claude-haiku-4-5-20251001'
 export const WATCHER_DEBOUNCE_MS = 150
 export const GIT_STATUS_DEBOUNCE_MS = 500
 
-// Buildoto AI (sprint 8). Portal hosts the OAuth-lite PKCE consent screen +
-// token endpoints; the AI service is OpenAI-compatible. Env overrides keep
+// Buildoto AI (sprint 8). Portal SPA hosts the OAuth-lite PKCE consent screen
+// (opened in the user's browser); the portal FastAPI backend mints/refreshes
+// the desktop tokens; the AI service is OpenAI-compatible. SPA and API live
+// on distinct hostnames in prod (CF Worker vs Coolify) — keep them split so
+// fetch() calls don't hit the SPA's static-asset fallback. Env overrides keep
 // staging/local testing cheap without rebuilding.
 export const BUILDOTO_PORTAL_URL = process.env.BUILDOTO_PORTAL_URL || 'https://app.buildoto.com'
+export const BUILDOTO_PORTAL_API_URL =
+  process.env.BUILDOTO_PORTAL_API_URL || 'https://app-api.buildoto.com'
 export const BUILDOTO_AI_URL = process.env.BUILDOTO_AI_URL || 'https://api.buildoto.com'
 export const BUILDOTO_DEEP_LINK_SCHEME = 'buildoto'

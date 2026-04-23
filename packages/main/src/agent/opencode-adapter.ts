@@ -37,6 +37,8 @@ import {
   parseSourcesHeader,
   readSourcesFromSse,
 } from './buildoto-sources'
+import { sanitizeHistory } from './sanitize-history'
+import { safeErrorMessage } from '../lib/safe-error'
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderId, string> = {
   'buildoto-ai': 'buildoto-ai-v1',
@@ -122,7 +124,8 @@ class OpenCodeAdapter {
 
   setProvider(providerId: ProviderId, model?: string): AdapterState {
     this.state.providerId = providerId
-    this.state.model = model ?? this.resolveModel(providerId)
+    this.state.model =
+      model && model.trim() !== '' ? model : this.resolveModel(providerId)
     return this.getState()
   }
 
@@ -156,6 +159,21 @@ class OpenCodeAdapter {
     let accumulatedText = ''
     let stopReason = 'unknown'
 
+    // Repair any orphan tool_calls in the persisted history before handing
+    // it to the provider — OpenAI-compatible backends reject turns with
+    // unterminated tool calls. See sanitize-history.ts.
+    const sanitizeReport = { injected: 0, orphanToolCallIds: [] as string[] }
+    const safeHistory = sanitizeHistory(
+      args.history as CoreMessage[],
+      sanitizeReport,
+    )
+    if (sanitizeReport.injected > 0) {
+      console.warn(
+        `[opencode-adapter] history had ${sanitizeReport.injected} orphan tool_call(s); injected synthetic error results`,
+        sanitizeReport.orphanToolCallIds,
+      )
+    }
+
     try {
       const result = await runAgentTurn({
         agentConfig,
@@ -163,12 +181,23 @@ class OpenCodeAdapter {
         modelId: this.state.model,
         providers,
         tools,
-        history: args.history as CoreMessage[],
+        history: safeHistory,
         userMessage: args.userMessage,
         abortSignal: args.abortSignal,
         onEvent: (event) => {
           const translated = this.translateEvent(event)
-          if (event.type === 'token_delta') accumulatedText += event.delta
+          if (event.type === 'token_delta') {
+            // Defensive: the AI SDK's `textDelta` is typed as string, but
+            // an OpenAI-compatible upstream (buildoto-ai via Mistral) can
+            // surface non-string content parts in the delta. Skipping a
+            // non-string keeps the rendered transcript clean instead of
+            // emitting "[object Object]" into the chat.
+            const delta =
+              typeof event.delta === 'string'
+                ? event.delta
+                : ''
+            accumulatedText += delta
+          }
           if (event.type === 'turn_finish') stopReason = event.finishReason
           if (translated) args.onEvent(translated)
         },
@@ -200,6 +229,17 @@ class OpenCodeAdapter {
   // malformed sources payload never breaks the agent turn.
   private handleBuildotoAiResponse(res: Response): void {
     buildotoUsage.applyQuotaHeaders(res.headers)
+    // A 401 here means the JWT we sent was rejected — most often because the
+    // cached token expired between getKey() and the server's decode. Drop the
+    // cache so the next retry (ai-sdk retries 3× on transient errors) mints a
+    // fresh JWT instead of replaying the dead one.
+    if (res.status === 401) {
+      buildotoAuth.invalidateAccessToken()
+      // The provider registry caches the LanguageModel factory keyed by the
+      // API key string — bust it so the next ai-sdk retry rebuilds it with a
+      // freshly minted JWT instead of replaying the dead closure.
+      this.providers?.invalidate('buildoto-ai')
+    }
     const sink = this.sourcesSinkRef.current
     if (!sink) return
     const fromHeader = parseSourcesHeader(res.headers)
@@ -234,8 +274,15 @@ class OpenCodeAdapter {
           provenance: event.provenance,
         }
       case 'tool_result': {
-        const output =
-          typeof event.output === 'string'
+        // For error results the raw `output` is often a native Error or a
+        // bare object — stringifying it with JSON yields `{}` because Error
+        // props aren't enumerable, leaving the user staring at "[object Object]".
+        // Route errors through safeErrorMessage so the chat surfaces the real
+        // cause; success paths keep the structured JSON so downstream tools
+        // can still parse it.
+        const output = event.isError
+          ? safeErrorMessage(event.output, 'tool failed (no message)')
+          : typeof event.output === 'string'
             ? event.output
             : JSON.stringify(event.output)
         return {
@@ -253,9 +300,10 @@ class OpenCodeAdapter {
   }
 
   private resolveModel(providerId: ProviderId): string {
-    return (
-      getProviderModel(providerId) ?? DEFAULT_MODEL_BY_PROVIDER[providerId]
-    )
+    const stored = getProviderModel(providerId)
+    return stored && stored.trim() !== ''
+      ? stored
+      : DEFAULT_MODEL_BY_PROVIDER[providerId]
   }
 
   private registeredMcpIds = new Set<string>()

@@ -127,6 +127,15 @@ export function registerProjectHandlers(window: BrowserWindow) {
 
   ipcMain.handle(IpcChannels.SESSION_NEW, async (): Promise<SessionNewResult> => {
     const session = await projectRegistry.newSession()
+    // Wipe the FreeCAD document so the new chat starts from a blank model.
+    // If the sidecar is down the reset is best-effort — the new session must
+    // still be created.
+    try {
+      const { resetDocument } = await import('../freecad/client')
+      await resetDocument()
+    } catch (err) {
+      console.warn('[session:new] reset_document failed:', err)
+    }
     return { sessionId: session.sessionId }
   })
 

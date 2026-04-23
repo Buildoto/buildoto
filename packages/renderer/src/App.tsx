@@ -34,17 +34,26 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false
-    window.buildoto.settings
-      .getProvidersStatus()
-      .then((status) => {
-        if (cancelled) return
-        setApiKeySet(status.anthropic.isSet)
-      })
-      .finally(() => {
-        if (!cancelled) setApiBootstrapped(true)
-      })
+
+    const refresh = async () => {
+      const [status, auth] = await Promise.all([
+        window.buildoto.settings.getProvidersStatus(),
+        window.buildoto.buildotoAuth.getStatus(),
+      ])
+      if (cancelled) return
+      const anyKeySet = Object.values(status).some((p) => p.isSet)
+      setApiKeySet(anyKeySet || auth.kind === 'signed-in')
+    }
+
+    void refresh().finally(() => {
+      if (!cancelled) setApiBootstrapped(true)
+    })
+    const unsub = window.buildoto.buildotoAuth.onStatusChanged(() => {
+      void refresh()
+    })
     return () => {
       cancelled = true
+      unsub()
     }
   }, [])
 

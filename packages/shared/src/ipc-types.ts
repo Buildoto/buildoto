@@ -35,6 +35,7 @@ export const IpcChannels = {
   // FreeCAD (sprint 1)
   FREECAD_GET_STATUS: 'freecad:get-status',
   FREECAD_STATUS_CHANGE: 'freecad:status-change',
+  FREECAD_RESTART: 'freecad:restart',
 
   // Settings (sprint 1, multi-provider in sprint 3)
   SETTINGS_GET_PROVIDERS_STATUS: 'settings:get-providers-status',
@@ -434,6 +435,7 @@ export interface BuildotoApi {
   }
   freecad: {
     getStatus: () => Promise<FreecadSidecarStatus>
+    restart: () => Promise<FreecadSidecarStatus>
     onStatusChange: (handler: (status: FreecadSidecarStatus) => void) => () => void
   }
   settings: {

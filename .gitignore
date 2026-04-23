@@ -46,4 +46,8 @@ Thumbs.db
 coverage/
 
 # Plans / memory
-.claude/local/
+.claude/
+
+# Python bytecode (FreeCAD sidecar)
+__pycache__/
+*.pyc

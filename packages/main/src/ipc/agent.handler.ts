@@ -16,9 +16,11 @@ import {
 import { openCodeAdapter } from '../agent/opencode-adapter'
 import { GitRepo } from '../git/repo'
 import { generateCommitMessage } from '../git/commit-message'
+import { safeErrorMessage } from '../lib/safe-error'
 import { readConfig, writeConfig } from '../project/project'
 import { projectRegistry } from '../project/registry'
 import { getApiKey } from '../store/settings'
+import { buildotoAuth } from '../auth/buildoto'
 import type { Project, ProviderId, AgentMode } from '@buildoto/shared'
 
 let fallbackHistory: CoreMessageEntry[] = []
@@ -68,13 +70,19 @@ export function registerAgentHandlers(window: BrowserWindow) {
     async (_e, req: AgentRunTurnRequest): Promise<AgentRunTurnResult> => {
       const { providerId } = openCodeAdapter.getState()
       const anthropicKey = await getApiKey('anthropic')
-      const providerKey = await getApiKey(providerId)
-      if (!providerKey && providerId !== 'ollama') {
-        emit({
-          type: 'error',
-          message: `Aucune clé API ${providerId} configurée. Ouvrez les réglages.`,
-        })
-        throw new Error(`No ${providerId} API key set`)
+      const hasCredential =
+        providerId === 'ollama'
+          ? true
+          : providerId === 'buildoto-ai'
+            ? !!(await buildotoAuth.getAccessToken().catch(() => null))
+            : !!(await getApiKey(providerId))
+      if (!hasCredential) {
+        const msg =
+          providerId === 'buildoto-ai'
+            ? 'Connectez-vous à Buildoto AI dans les réglages.'
+            : `Aucune clé API ${providerId} configurée. Ouvrez les réglages.`
+        emit({ type: 'error', message: msg })
+        throw new Error(`No ${providerId} credential available`)
       }
 
       if (activeController) activeController.abort()
@@ -142,7 +150,8 @@ export function registerAgentHandlers(window: BrowserWindow) {
         }
         return { stopReason: result.stopReason }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[agent:run-turn] error:', err)
+        const msg = safeErrorMessage(err)
         emit({ type: 'error', message: msg })
         await appendSession({
           id: `e-${ulid()}`,

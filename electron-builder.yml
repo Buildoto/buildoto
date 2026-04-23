@@ -43,6 +43,12 @@ mac:
       to: freecad
       filter:
         - '**/*'
+    - from: resources/freecad/runner.py
+      to: freecad/runner.py
+    - from: resources/freecad/handlers
+      to: freecad/handlers
+      filter:
+        - '**/*.py'
 afterSign: build/notarize.cjs
 
 win:
@@ -60,6 +66,12 @@ win:
       to: freecad
       filter:
         - '**/*'
+    - from: resources/freecad/runner.py
+      to: freecad/runner.py
+    - from: resources/freecad/handlers
+      to: freecad/handlers
+      filter:
+        - '**/*.py'
 
 linux:
   target:
@@ -74,6 +86,12 @@ linux:
       to: freecad
       filter:
         - '**/*'
+    - from: resources/freecad/runner.py
+      to: freecad/runner.py
+    - from: resources/freecad/handlers
+      to: freecad/handlers
+      filter:
+        - '**/*.py'
 
 nsis:
   oneClick: false

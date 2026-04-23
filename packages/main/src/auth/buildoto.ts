@@ -25,6 +25,7 @@ import type { BuildotoAuthState } from '@buildoto/shared'
 
 import {
   BUILDOTO_DEEP_LINK_SCHEME,
+  BUILDOTO_PORTAL_API_URL,
   BUILDOTO_PORTAL_URL,
   KEYTAR_ACCOUNT_BUILDOTO_REFRESH,
   KEYTAR_SERVICE,
@@ -54,7 +55,11 @@ interface SessionInfo {
 }
 
 const AUTH_TIMEOUT_MS = 2 * 60 * 1000
-const REFRESH_SKEW_SEC = 30
+// Access JWT TTL is 300 s. We refresh eagerly at 90 s left so long streaming
+// turns (tool loops can exceed 30–60 s) never send a JWT that expires in
+// flight. 30 s was too tight and caused "invalid or expired access token"
+// after ~4 min turns.
+const REFRESH_SKEW_SEC = 90
 const REDIRECT_URI = `${BUILDOTO_DEEP_LINK_SCHEME}://auth`
 
 class BuildotoAuthManager extends EventEmitter {
@@ -168,6 +173,13 @@ class BuildotoAuthManager extends EventEmitter {
     return this.refreshAccessToken()
   }
 
+  // Called by the provider layer when buildoto-ai returns 401. Drops the
+  // cached JWT so the next getAccessToken() mints a new one via refresh.
+  // Idempotent — safe to call multiple times on the same turn.
+  invalidateAccessToken(): void {
+    this.accessCache = null
+  }
+
   // Called by the electron protocol handler wiring (open-url on macOS,
   // second-instance on Win/Linux) with the raw `buildoto://auth?…` URL.
   async handleDeepLink(rawUrl: string): Promise<void> {
@@ -229,7 +241,7 @@ class BuildotoAuthManager extends EventEmitter {
       try {
         const refresh = await this.readRefreshToken()
         if (!refresh) throw new Error('Not signed in to Buildoto AI')
-        const res = await fetch(`${BUILDOTO_PORTAL_URL}/desktop/token/refresh`, {
+        const res = await fetch(`${BUILDOTO_PORTAL_API_URL}/desktop/token/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refresh }),
@@ -262,7 +274,7 @@ class BuildotoAuthManager extends EventEmitter {
     code: string,
     codeVerifier: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const res = await fetch(`${BUILDOTO_PORTAL_URL}/desktop/token`, {
+    const res = await fetch(`${BUILDOTO_PORTAL_API_URL}/desktop/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, code_verifier: codeVerifier }),

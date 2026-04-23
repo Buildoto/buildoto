@@ -18,9 +18,17 @@ export function useAgentEvents() {
   useEffect(() => {
     const unsubscribe = window.buildoto.agent.onEvent((event: AgentEvent) => {
       switch (event.type) {
-        case 'assistant_text':
-          updateLastAssistantText(event.text)
+        case 'assistant_text': {
+          // Belt-and-braces: upstream providers (buildoto-ai via Mistral)
+          // can surface non-string content in streamed deltas. Coerce to a
+          // readable string so the chat never renders "[object Object]".
+          const text =
+            typeof event.text === 'string'
+              ? event.text
+              : JSON.stringify(event.text)
+          updateLastAssistantText(text)
           break
+        }
         case 'tool_call':
           appendMessage({
             id: genId('tc'),
@@ -57,10 +65,26 @@ export function useAgentEvents() {
         case 'done':
           setRunning(false)
           break
-        case 'error':
-          appendMessage({ id: genId('err'), role: 'error', text: event.message })
+        case 'error': {
+          const raw =
+            typeof event.message === 'string'
+              ? event.message
+              : JSON.stringify(event.message)
+          // Last rampart: older sessions persisted the literal "[object Object]"
+          // back when the coercion layers still let it through. Rewrite it in
+          // place so the transcript is readable; the raw shape is already in
+          // the main-process console for diagnosis.
+          const text =
+            raw === '[object Object]'
+              ? 'erreur inconnue — voir console Electron'
+              : raw
+          if (raw === '[object Object]') {
+            console.warn('[use-agent] legacy "[object Object]" error replaced')
+          }
+          appendMessage({ id: genId('err'), role: 'error', text })
           setRunning(false)
           break
+        }
       }
     })
     return unsubscribe

@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
-import { existsSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs'
 import { createServer, type Server, type Socket } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,12 +17,34 @@ import {
 // `electron` is only available under the Electron runtime. When the sidecar is
 // used from a plain Node script (e.g. smoke test via tsx), fall back to
 // unpackaged paths relative to cwd.
-function electronApp(): { isPackaged: boolean; resourcesPath?: string } | null {
+// Narrowed facade over Electron's `app` — we only consume a handful of
+// properties, and `resourcesPath` actually lives on `process.resourcesPath`
+// (not `app`) under the Electron runtime. Keeping a minimal local type also
+// means this file stays usable from a plain Node tsx harness where
+// `@types/electron` may not resolve.
+interface ElectronAppFacade {
+  isPackaged: boolean
+  resourcesPath: string
+  getPath(name: string): string
+}
+
+function electronApp(): ElectronAppFacade | null {
   try {
     const req = createRequire(import.meta.url)
     const mod = req('electron') as typeof import('electron')
-    if (mod && typeof mod === 'object' && 'app' in mod && mod.app) return mod.app
-    return null
+    if (!mod || typeof mod !== 'object' || !('app' in mod) || !mod.app) return null
+    const app = mod.app
+    // `resourcesPath` is exposed on the global `process` object in the
+    // Electron runtime; fall back to an empty string when running under plain
+    // Node (the caller never uses it in that case — `app.isPackaged` is
+    // false and the unpacked candidates win).
+    const resourcesPath =
+      (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? ''
+    return {
+      isPackaged: app.isPackaged,
+      resourcesPath,
+      getPath: (name: string) => app.getPath(name as Parameters<typeof app.getPath>[0]),
+    }
   } catch {
     return null
   }
@@ -37,6 +59,12 @@ type Pending = {
 type TargetKey = 'darwin-arm64' | 'darwin-x64' | 'linux-x64' | 'win32-x64'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Boot retry: one extra attempt if the first fails. Under a slow-disk boot the
+// Python import of FreeCAD can exceed DEFAULT_BOOT_TIMEOUT_MS on the cold path;
+// a second try with a fresh server/socket almost always wins.
+const BOOT_RETRY_ATTEMPTS = 2
+const BOOT_RETRY_BACKOFF_MS = 1000
 
 function currentTarget(): TargetKey {
   const p = process.platform
@@ -54,7 +82,7 @@ function resolveFreecadBinary(): string {
   const app = electronApp()
 
   const candidates = app?.isPackaged
-    ? [join(app.resourcesPath!, 'freecad', 'bin', exe)]
+    ? [join(app.resourcesPath, 'freecad', 'bin', exe)]
     : [
         resolve(__dirname, '../../../../resources/freecad', target, 'bin', exe),
         resolve(process.cwd(), 'resources/freecad', target, 'bin', exe),
@@ -67,7 +95,7 @@ function resolveFreecadBinary(): string {
 function resolveRunnerScript(): string {
   const app = electronApp()
   const candidates = app?.isPackaged
-    ? [join(app.resourcesPath!, 'freecad', 'runner.py')]
+    ? [join(app.resourcesPath, 'freecad', 'runner.py')]
     : [
         resolve(__dirname, '../../../../resources/freecad/runner.py'),
         resolve(process.cwd(), 'resources/freecad/runner.py'),
@@ -75,6 +103,19 @@ function resolveRunnerScript(): string {
   const found = candidates.find(existsSync)
   if (!found) throw new Error(`runner.py not found. Looked at:\n  - ${candidates.join('\n  - ')}`)
   return found
+}
+
+function resolveLogFile(): string | null {
+  try {
+    const app = electronApp()
+    // In Electron we pick the OS-standard userData logs directory; in plain
+    // Node (smoke tests) we fall back to cwd so developers see the file.
+    const base = app ? app.getPath('logs') : resolve(process.cwd(), '.buildoto-logs')
+    mkdirSync(base, { recursive: true })
+    return join(base, 'freecad-sidecar.log')
+  } catch {
+    return null
+  }
 }
 
 export interface SidecarEvents {
@@ -90,6 +131,7 @@ export class FreecadSidecar extends EventEmitter {
   private status: FreecadSidecarStatus = { state: 'stopped' }
   private token = randomBytes(16).toString('hex')
   private readyPromise: Promise<FreecadSidecarStatus> | null = null
+  private logStream: WriteStream | null = null
 
   getStatus(): FreecadSidecarStatus {
     return this.status
@@ -100,16 +142,69 @@ export class FreecadSidecar extends EventEmitter {
     this.emit('status', next)
   }
 
+  private log(line: string) {
+    const stamped = `[${new Date().toISOString()}] ${line}\n`
+    try {
+      if (!this.logStream) {
+        const path = resolveLogFile()
+        if (path) this.logStream = createWriteStream(path, { flags: 'a' })
+      }
+      this.logStream?.write(stamped)
+    } catch {
+      /* logging must never throw */
+    }
+  }
+
   async start(): Promise<FreecadSidecarStatus> {
     if (this.readyPromise) return this.readyPromise
     this.setStatus({ state: 'booting' })
-    this.readyPromise = this.bootstrap().catch((err: Error) => {
+    this.log('start() requested')
+    this.readyPromise = this.bootstrapWithRetries().catch((err: Error) => {
       const msg = err instanceof Error ? err.message : String(err)
+      this.log(`bootstrap failed: ${msg}`)
       this.setStatus({ state: 'error', message: msg })
       this.readyPromise = null
       throw err
     })
     return this.readyPromise
+  }
+
+  /**
+   * Hard-reset the sidecar and boot again. Safe to call from any state — if
+   * the child is running it's torn down first. Unlike `start()`, this bypasses
+   * the `readyPromise` memo so callers can force a fresh boot attempt after
+   * an error has landed us in `state: error`.
+   */
+  async restart(): Promise<FreecadSidecarStatus> {
+    this.log('restart() requested')
+    this.shutdownInternal()
+    return this.start()
+  }
+
+  private async bootstrapWithRetries(): Promise<FreecadSidecarStatus> {
+    let lastErr: Error | null = null
+    for (let attempt = 1; attempt <= BOOT_RETRY_ATTEMPTS; attempt++) {
+      // Re-assert booting before each attempt: a previous attempt's child-exit
+      // handler may have flipped status to `error`, and we want the UI to
+      // reflect that we're still trying.
+      this.setStatus({ state: 'booting' })
+      try {
+        this.log(`bootstrap attempt ${attempt}/${BOOT_RETRY_ATTEMPTS}`)
+        const ready = await this.bootstrap()
+        this.log(`sidecar ready (attempt ${attempt}): v${ready.state === 'ready' ? ready.version : '?'}`)
+        return ready
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err))
+        this.log(`attempt ${attempt} failed: ${lastErr.message}`)
+        // Clean up anything partial before the next try so the server port /
+        // child handles are released.
+        this.shutdownInternal(/*preserveStatus*/ true)
+        if (attempt < BOOT_RETRY_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, BOOT_RETRY_BACKOFF_MS))
+        }
+      }
+    }
+    throw lastErr ?? new Error('bootstrap failed')
   }
 
   private async bootstrap(): Promise<FreecadSidecarStatus> {
@@ -121,7 +216,7 @@ export class FreecadSidecar extends EventEmitter {
     return new Promise<FreecadSidecarStatus>((resolvePromise, rejectPromise) => {
       const bootTimer = setTimeout(() => {
         rejectPromise(new Error(`FreeCAD sidecar did not boot within ${DEFAULT_BOOT_TIMEOUT_MS}ms`))
-        this.shutdownInternal()
+        this.shutdownInternal(/*preserveStatus*/ true)
       }, DEFAULT_BOOT_TIMEOUT_MS)
 
       const bootHandler = (response: FreecadResponse) => {
@@ -148,11 +243,20 @@ export class FreecadSidecar extends EventEmitter {
         },
         stdio: ['ignore', 'pipe', 'pipe'],
       })
-      this.child.stdout?.on('data', (b: Buffer) => console.log('[freecad stdout]', b.toString().trimEnd()))
-      this.child.stderr?.on('data', (b: Buffer) => console.error('[freecad stderr]', b.toString().trimEnd()))
+      this.child.stdout?.on('data', (b: Buffer) => {
+        const line = b.toString().trimEnd()
+        console.log('[freecad stdout]', line)
+        this.log(`stdout: ${line}`)
+      })
+      this.child.stderr?.on('data', (b: Buffer) => {
+        const line = b.toString().trimEnd()
+        console.error('[freecad stderr]', line)
+        this.log(`stderr: ${line}`)
+      })
       this.child.on('exit', (code, signal) => {
         this.child = null
         const reason = `freecadcmd exited (code=${code}, signal=${signal})`
+        this.log(reason)
         for (const p of this.pending.values()) {
           clearTimeout(p.timer)
           p.reject(new Error(reason))
@@ -186,6 +290,7 @@ export class FreecadSidecar extends EventEmitter {
     })
     sock.on('error', (err) => {
       console.error('[sidecar] socket error', err)
+      this.log(`socket error: ${err.message}`)
     })
   }
 
@@ -251,7 +356,9 @@ export class FreecadSidecar extends EventEmitter {
     }
   }
 
-  private shutdownInternal() {
+  // `preserveStatus` keeps the current `status` intact so retry attempts
+  // don't flap the renderer between `stopped` and `booting` between tries.
+  private shutdownInternal(preserveStatus = false) {
     if (this.child) {
       try {
         this.child.kill('SIGTERM')
@@ -268,7 +375,9 @@ export class FreecadSidecar extends EventEmitter {
       this.server.close()
       this.server = null
     }
-    this.setStatus({ state: 'stopped' })
+    this.buffer = Buffer.alloc(0)
+    this.pending.clear()
+    if (!preserveStatus) this.setStatus({ state: 'stopped' })
     this.readyPromise = null
   }
 }

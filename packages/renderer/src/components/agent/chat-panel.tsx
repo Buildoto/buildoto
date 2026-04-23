@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useSessionStore } from '@/stores/session-store'
 import { Message } from './message'
 import { InputBox } from './input-box'
+import { SessionsToolbar } from './sessions-toolbar'
 
 export function ChatPanel({ apiKeySet }: { apiKeySet: boolean }) {
   const messages = useSessionStore((s) => s.messages)
@@ -16,6 +17,7 @@ export function ChatPanel({ apiKeySet }: { apiKeySet: boolean }) {
 
   return (
     <div className="flex h-full flex-col">
+      <SessionsToolbar />
       <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
           <div ref={viewportRef} className="h-full">

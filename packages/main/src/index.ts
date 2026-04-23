@@ -45,7 +45,7 @@ function createWindow(): BrowserWindow {
     show: false,
     backgroundColor: '#0b0c0f',
     webPreferences: {
-      preload: join(__dirname, '../preload/preload.js'),
+      preload: join(__dirname, '../preload/preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,

@@ -71,6 +71,7 @@ def arch_create_floor(payload, doc):
     wire = Draft.makeWire(points, closed=True, face=True)
     floor = Arch.makeStructure(wire, height=thickness)
     floor.IfcType = "Slab"
+    floor.Label = "Floor"
     doc.recompute()
     return {
         "ok": True,
@@ -121,6 +122,7 @@ def arch_create_door(payload, doc):
         door.WindowParts = ["Door", "Frame", "Wire0", "30", "40"]
     except Exception:
         pass
+    door.Label = "Door"
     placement = FreeCAD.Placement()
     placement.Base = FreeCAD.Vector(offset, 0, 0)
     door.Placement = placement

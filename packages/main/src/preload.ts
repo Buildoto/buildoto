@@ -87,6 +87,8 @@ const api: BuildotoApi = {
   freecad: {
     getStatus: () =>
       ipcRenderer.invoke(IpcChannels.FREECAD_GET_STATUS) as Promise<FreecadSidecarStatus>,
+    restart: () =>
+      ipcRenderer.invoke(IpcChannels.FREECAD_RESTART) as Promise<FreecadSidecarStatus>,
     onStatusChange: (handler) =>
       subscribe<FreecadSidecarStatus>(IpcChannels.FREECAD_STATUS_CHANGE, handler),
   },

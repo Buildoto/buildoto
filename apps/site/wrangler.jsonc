@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "buildoto-site",
+  "compatibility_date": "2026-04-21",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    {
+      "pattern": "preview.buildoto.com",
+      "custom_domain": true
+    }
+  ]
+}

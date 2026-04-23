@@ -38,6 +38,28 @@
     "package:linux": "tsx scripts/postinstall.ts --target=linux-x64 && pnpm build && electron-builder --linux",
     "package:win": "tsx scripts/postinstall.ts --target=win32-x64 && pnpm build && electron-builder --win"
   },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/mistral": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@octokit/rest": "^21.0.2",
+    "@openrouter/ai-sdk-provider": "^0.4.0",
+    "@sentry/electron": "^5.11.0",
+    "ai": "^4.0.0",
+    "chokidar": "^4.0.1",
+    "electron-store": "^10.0.1",
+    "electron-updater": "^6.3.9",
+    "keytar": "^7.9.0",
+    "ollama-ai-provider": "^1.2.0",
+    "posthog-node": "^4.18.0",
+    "simple-git": "^3.27.0",
+    "ulid": "^2.3.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.0"
+  },
   "devDependencies": {
     "7zip-min": "^1.4.5",
     "@electron/notarize": "^2.5.0",
@@ -55,5 +77,13 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.16.0",
     "vite": "^6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-winstaller",
+      "esbuild",
+      "keytar"
+    ]
   }
 }

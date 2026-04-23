@@ -61,13 +61,13 @@ export function SettingsDialog({ open, onOpenChange, onStatusChange }: SettingsD
     if (!open) return
     void window.buildoto.settings.getProvidersStatus().then((s) => {
       setStatus(s)
-      onStatusChange(s.anthropic.isSet)
+      onStatusChange(Object.values(s).some((p) => p.isSet))
     })
   }, [open, onStatusChange])
 
   const refresh = (s: ProvidersStatus) => {
     setStatus(s)
-    onStatusChange(s.anthropic.isSet)
+    onStatusChange(Object.values(s).some((p) => p.isSet))
   }
 
   return (
@@ -104,6 +104,9 @@ export function SettingsDialog({ open, onOpenChange, onStatusChange }: SettingsD
                         providerId: id,
                       })
                       setDefaultProviderState(id)
+                      // Also switch the live adapter so the agent picks up the
+                      // new provider without requiring a project reopen.
+                      await window.buildoto.agent.setProvider({ providerId: id })
                       refresh(next)
                     }}
                   />

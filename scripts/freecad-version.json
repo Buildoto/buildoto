@@ -7,5 +7,7 @@
     "linux-x64": "FreeCAD_.*-Linux-x86_64-py311\\.AppImage$",
     "win32-x64": "FreeCAD_.*-Windows-x86_64-py311\\.7z$"
   },
-  "sha256": {}
+  "sha256": {
+    "darwin-arm64": "52b069f86471ccf4fdd535c42cd9b74b9a8079a7abfd0f51ff19b0a30c6d795b"
+  }
 }

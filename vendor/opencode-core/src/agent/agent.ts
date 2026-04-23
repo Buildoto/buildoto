@@ -163,8 +163,13 @@ export async function runAgentTurn(
           const e = (part as { error: unknown }).error
           onEvent({
             type: 'error',
-            message: e instanceof Error ? e.message : String(e),
+            message: coerceStreamError(e),
           })
+          try {
+            console.error('[adapter:error-part]', e)
+          } catch {
+            /* ignore */
+          }
           break
         }
         case 'finish':
@@ -189,10 +194,39 @@ export async function runAgentTurn(
 
     return { history: newHistory, finishReason, text }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    onEvent({ type: 'error', message })
+    onEvent({ type: 'error', message: coerceStreamError(err) })
     throw err
   }
+}
+
+// Streams can surface plain objects (or fetch Response errors) instead of
+// Error instances; `String(obj)` then yields "[object Object]" and the chat
+// renders a meaningless error. Extract a useful string across all shapes so
+// the user always sees what actually went wrong.
+function coerceStreamError(e: unknown): string {
+  const fallback = 'stream error (see main-process console for details)'
+  if (e instanceof Error) {
+    if (e.message) return e.message
+    try {
+      const j = JSON.stringify(e, Object.getOwnPropertyNames(e))
+      return j && j !== '{}' ? j : fallback
+    } catch {
+      return fallback
+    }
+  }
+  if (typeof e === 'string') return e.length > 0 ? e : fallback
+  if (e && typeof e === 'object') {
+    const msg = (e as { message?: unknown }).message
+    if (typeof msg === 'string' && msg.length > 0) return msg
+    try {
+      const j = JSON.stringify(e, Object.getOwnPropertyNames(e as object))
+      return j && j !== '{}' ? j : fallback
+    } catch {
+      return fallback
+    }
+  }
+  const s = String(e)
+  return s && s !== '[object Object]' ? s : fallback
 }
 
 // Preset factories — mirrored from OpenCode's `build` / `plan` agent

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { Settings } from 'lucide-react'
+import { RotateCcw, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChatPanel } from '@/components/agent/chat-panel'
@@ -14,7 +14,9 @@ import { UpdateBanner } from '@/components/feedback/update-banner'
 import { QuotaBanner } from '@/components/feedback/quota-banner'
 import { useBuildotoUsage } from '@/hooks/use-buildoto-usage'
 import { useBuildotoAuth } from '@/hooks/use-buildoto-auth'
+import { useFreecadRestart } from '@/hooks/use-freecad'
 import { useQuotaToasts } from '@/hooks/use-quota-toasts'
+import type { FreecadSidecarStatus } from '@buildoto/shared'
 import { cn } from '@/lib/utils'
 
 interface AppShellProps {
@@ -57,11 +59,7 @@ export function AppShell({ apiKeySet, onOpenSettings }: AppShellProps) {
           {buildotoAuth.kind === 'signed-in' && usage.known && (
             <BuildotoAiPill usage={usage} onClick={onOpenSettings} />
           )}
-          <StatusPill
-            label="FreeCAD"
-            state={freecadStatus.state}
-            detail={freecadStatus.state === 'ready' ? `v${freecadStatus.version}` : undefined}
-          />
+          <FreecadStatus status={freecadStatus} />
           <StatusPill label="API" state={apiKeySet ? 'ready' : 'stopped'} />
           <Button variant="ghost" size="icon" onClick={onOpenSettings} aria-label="Paramètres">
             <Settings className="h-4 w-4" />
@@ -143,14 +141,45 @@ function BuildotoAiPill({
   )
 }
 
+function FreecadStatus({ status }: { status: FreecadSidecarStatus }) {
+  const { restart, isRestarting } = useFreecadRestart()
+  const detail = status.state === 'ready' ? `v${status.version}` : undefined
+  const canRestart = status.state === 'error' || status.state === 'stopped'
+  return (
+    <div className="flex items-center gap-1">
+      <StatusPill
+        label="FreeCAD"
+        state={status.state}
+        detail={detail}
+        title={status.state === 'error' ? status.message : undefined}
+      />
+      {canRestart && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => void restart()}
+          disabled={isRestarting}
+          aria-label="Relancer FreeCAD"
+          title="Relancer le sidecar FreeCAD"
+        >
+          <RotateCcw className={cn('h-3.5 w-3.5', isRestarting && 'animate-spin')} />
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function StatusPill({
   label,
   state,
   detail,
+  title,
 }: {
   label: string
   state: 'booting' | 'ready' | 'error' | 'stopped'
   detail?: string
+  title?: string
 }) {
   const dot =
     state === 'ready'
@@ -162,6 +191,7 @@ function StatusPill({
           : 'bg-muted-foreground'
   return (
     <div
+      title={title}
       className={cn(
         'flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1 text-xs',
       )}
