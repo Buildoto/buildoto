@@ -17,9 +17,7 @@ import { EventEmitter } from 'node:events'
 import type { BuildotoUsageSnapshot } from '@buildoto/shared'
 
 import { buildotoAuth } from './buildoto'
-import { BUILDOTO_AI_URL } from '../lib/constants'
-
-const POLL_INTERVAL_MS = 5 * 60 * 1000
+import { BUILDOTO_AI_URL, USAGE_POLL_INTERVAL_MS } from '../lib/constants'
 
 const EMPTY: BuildotoUsageSnapshot = {
   known: false,
@@ -49,7 +47,7 @@ class BuildotoUsageManager extends EventEmitter {
       if (buildotoAuth.getStatus().kind === 'signed-in') {
         void this.refreshFromServer()
       }
-    }, POLL_INTERVAL_MS)
+    }, USAGE_POLL_INTERVAL_MS)
     // Initial pull if the user is already signed in at startup.
     if (buildotoAuth.getStatus().kind === 'signed-in') {
       void this.refreshFromServer()

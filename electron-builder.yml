@@ -33,11 +33,12 @@ mac:
       arch:
         - arm64
         - x64
-  hardenedRuntime: true
-  gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
-  icon: build/icon.icns
+  # No Apple Developer account → skip code signing entirely.
+  # `hardenedRuntime` + entitlements require a signing cert, so we opt out.
+  # Gatekeeper will warn on first launch, but the app runs fine after
+  # right-click → Open or `xattr -cr /Applications/Buildoto.app`.
+  identity: null
+  icon: build/icon-1024.png
   extraResources:
     - from: resources/freecad/darwin-${arch}
       to: freecad
@@ -49,18 +50,20 @@ mac:
       to: freecad/handlers
       filter:
         - '**/*.py'
-afterSign: build/notarize.cjs
 
 win:
   target:
     - target: nsis
       arch:
         - x64
-  verifyUpdateCodeSignature: false
-  icon: build/icon.ico
-  sign: build/win-sign.cjs
-  signingHashAlgorithms:
-    - sha256
+  # No EV code signing certificate → installer is unsigned.
+  # Windows SmartScreen will show a warning, but users can click
+  # "More info" → "Run anyway". Open-source projects typically
+  # distribute unsigned until they can afford a signing cert.
+  certificateSubjectName: null
+  certificateSha1: null
+  signingHashAlgorithms: null
+  icon: build/icon-1024.png
   extraResources:
     - from: resources/freecad/win32-${arch}
       to: freecad

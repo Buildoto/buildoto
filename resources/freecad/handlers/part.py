@@ -82,7 +82,7 @@ def part_boolean(payload, doc):
     obj.Base = a
     obj.Tool = b
     doc.recompute()
-    return {"ok": True, "object_id": obj.Name, "operation": op}
+    return {"ok": True, "object_id": obj.Name, "label": obj.Label, "operation": op}
 
 
 def part_extrude(payload, doc):
@@ -105,7 +105,7 @@ def part_extrude(payload, doc):
         obj.LengthFwd = depth
     obj.Solid = True
     doc.recompute()
-    return {"ok": True, "object_id": obj.Name, "depth_mm": depth}
+    return {"ok": True, "object_id": obj.Name, "label": obj.Label, "depth_mm": depth}
 
 
 TOOLS = {

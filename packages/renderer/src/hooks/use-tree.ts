@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import type { ProjectTreeDelta } from '@buildoto/shared'
 import { useProjectStore } from '@/stores/project-store'
 
 export function useProjectTree() {
@@ -13,13 +12,13 @@ export function useProjectTree() {
       return
     }
     let cancelled = false
-    window.buildoto.project.listTree().then((entries) => {
-      if (!cancelled) setTree(entries)
-    })
-    const unsub = window.buildoto.project.onTreeChanged((_delta: ProjectTreeDelta) => {
-      window.buildoto.project.listTree().then((entries) => {
-        if (!cancelled) setTree(entries)
-      })
+    window.buildoto.project.listTree()
+      .then((entries) => { if (!cancelled) setTree(entries) })
+      .catch(() => { if (!cancelled) setTree([]) })
+    const unsub = window.buildoto.project.onTreeChanged(() => {
+      window.buildoto.project.listTree()
+        .then((entries) => { if (!cancelled) setTree(entries) })
+        .catch(() => { if (!cancelled) setTree([]) })
     })
     return () => {
       cancelled = true

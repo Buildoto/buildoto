@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import type { AgentEvent, AgentMode, ProviderId, SessionActiveChanged } from '@buildoto/shared'
+import type { AgentEvent, AgentMode, SessionActiveChanged } from '@buildoto/shared'
 import { fromSessionMessages, useSessionStore } from '@/stores/session-store'
 
 function genId(prefix: string) {
@@ -9,7 +9,7 @@ function genId(prefix: string) {
 export function useAgentEvents() {
   const {
     appendMessage,
-    updateLastAssistantText,
+    setLastAssistantText,
     setGltf,
     setRunning,
     attachSourcesToLastAssistant,
@@ -18,15 +18,29 @@ export function useAgentEvents() {
   useEffect(() => {
     const unsubscribe = window.buildoto.agent.onEvent((event: AgentEvent) => {
       switch (event.type) {
+        case 'token_delta': {
+          // Delta chunks are accumulated by the adapter and sent as
+          // token_delta events. The final assistant_text event replaces
+          // the text to avoid duplication. We append delta chunks directly
+          // here so the UI updates live during streaming.
+          const text =
+            typeof event.text === 'string'
+              ? event.text
+              : ''
+          if (text) {
+            const { updateLastAssistantText } = useSessionStore.getState()
+            updateLastAssistantText(text)
+          }
+          break
+        }
         case 'assistant_text': {
-          // Belt-and-braces: upstream providers (buildoto-ai via Mistral)
-          // can surface non-string content in streamed deltas. Coerce to a
-          // readable string so the chat never renders "[object Object]".
+          // Final full text — replaces (not appends) the accumulated deltas
+          // so text is never duplicated across turn boundaries.
           const text =
             typeof event.text === 'string'
               ? event.text
               : JSON.stringify(event.text)
-          updateLastAssistantText(text)
+          if (text) setLastAssistantText(text)
           break
         }
         case 'tool_call':
@@ -65,6 +79,9 @@ export function useAgentEvents() {
         case 'done':
           setRunning(false)
           break
+        case 'canceled':
+          setRunning(false)
+          break
         case 'error': {
           const raw =
             typeof event.message === 'string'
@@ -90,7 +107,7 @@ export function useAgentEvents() {
     return unsubscribe
   }, [
     appendMessage,
-    updateLastAssistantText,
+    setLastAssistantText,
     setGltf,
     setRunning,
     attachSourcesToLastAssistant,
@@ -150,13 +167,4 @@ export function useToggleMode() {
   )
 }
 
-export function useSwitchProvider() {
-  const setAgentState = useSessionStore((s) => s.setAgentState)
-  return useCallback(
-    async (providerId: ProviderId, model?: string) => {
-      const next = await window.buildoto.agent.setProvider({ providerId, model })
-      setAgentState({ providerId: next.providerId, model: next.model })
-    },
-    [setAgentState],
-  )
-}
+

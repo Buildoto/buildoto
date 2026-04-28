@@ -56,7 +56,7 @@ const OPENCODE_CORE_ALIASES = {
   ),
 }
 
-const MAIN_ENV_KEYS = ['BUILDOTO_GITHUB_CLIENT_ID'] as const
+const MAIN_ENV_KEYS = ['BUILDOTO_GITHUB_CLIENT_ID', 'SENTRY_DSN', 'POSTHOG_KEY'] as const
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')

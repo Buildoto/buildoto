@@ -13,6 +13,19 @@ import {
   type FreecadResponse,
   type FreecadSidecarStatus,
 } from '@buildoto/shared'
+import {
+  FREECAD_RESOURCES_DIR,
+  FREECAD_RUNNER_SCRIPT,
+  SIDECAR_AUTO_RESTART_MAX_ATTEMPTS,
+  SIDECAR_BOOT_RETRY_ATTEMPTS,
+  SIDECAR_BOOT_RETRY_BACKOFF_MS,
+  SIDECAR_LOG_DIR,
+  SIDECAR_LOG_FILE,
+  SIDECAR_PING_INTERVAL_MS,
+  SIDECAR_PING_TIMEOUT_MS,
+  SIDECAR_REQUEST_DEFAULT_TIMEOUT_MS,
+  SIDECAR_SHUTDOWN_TIMEOUT_MS,
+} from '../lib/constants'
 
 // `electron` is only available under the Electron runtime. When the sidecar is
 // used from a plain Node script (e.g. smoke test via tsx), fall back to
@@ -63,8 +76,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // Boot retry: one extra attempt if the first fails. Under a slow-disk boot the
 // Python import of FreeCAD can exceed DEFAULT_BOOT_TIMEOUT_MS on the cold path;
 // a second try with a fresh server/socket almost always wins.
-const BOOT_RETRY_ATTEMPTS = 2
-const BOOT_RETRY_BACKOFF_MS = 1000
 
 function currentTarget(): TargetKey {
   const p = process.platform
@@ -73,7 +84,7 @@ function currentTarget(): TargetKey {
   if (p === 'darwin' && a === 'x64') return 'darwin-x64'
   if (p === 'linux' && a === 'x64') return 'linux-x64'
   if (p === 'win32' && a === 'x64') return 'win32-x64'
-  throw new Error(`Unsupported platform: ${p}-${a}`)
+  throw new Error(`Plateforme non supportée : ${p}-${a}`)
 }
 
 function resolveFreecadBinary(): string {
@@ -81,27 +92,28 @@ function resolveFreecadBinary(): string {
   const exe = target.startsWith('win32') ? 'freecadcmd.exe' : 'freecadcmd'
   const app = electronApp()
 
+  const resourceDir = app?.isPackaged ? 'freecad' : FREECAD_RESOURCES_DIR
   const candidates = app?.isPackaged
     ? [join(app.resourcesPath, 'freecad', 'bin', exe)]
     : [
-        resolve(__dirname, '../../../../resources/freecad', target, 'bin', exe),
-        resolve(process.cwd(), 'resources/freecad', target, 'bin', exe),
+        resolve(__dirname, '../../../../', resourceDir, target, 'bin', exe),
+        resolve(process.cwd(), resourceDir, target, 'bin', exe),
       ]
   const found = candidates.find(existsSync)
-  if (!found) throw new Error(`freecadcmd not found. Looked at:\n  - ${candidates.join('\n  - ')}`)
+  if (!found) throw new Error(`freecadcmd introuvable. Chemins cherchés :\n  - ${candidates.join('\n  - ')}`)
   return found
 }
 
 function resolveRunnerScript(): string {
   const app = electronApp()
   const candidates = app?.isPackaged
-    ? [join(app.resourcesPath, 'freecad', 'runner.py')]
+    ? [join(app.resourcesPath, 'freecad', FREECAD_RUNNER_SCRIPT)]
     : [
-        resolve(__dirname, '../../../../resources/freecad/runner.py'),
-        resolve(process.cwd(), 'resources/freecad/runner.py'),
+        resolve(__dirname, '../../../../', FREECAD_RESOURCES_DIR, FREECAD_RUNNER_SCRIPT),
+        resolve(process.cwd(), FREECAD_RESOURCES_DIR, FREECAD_RUNNER_SCRIPT),
       ]
   const found = candidates.find(existsSync)
-  if (!found) throw new Error(`runner.py not found. Looked at:\n  - ${candidates.join('\n  - ')}`)
+  if (!found) throw new Error(`runner.py introuvable. Chemins cherchés :\n  - ${candidates.join('\n  - ')}`)
   return found
 }
 
@@ -110,9 +122,9 @@ function resolveLogFile(): string | null {
     const app = electronApp()
     // In Electron we pick the OS-standard userData logs directory; in plain
     // Node (smoke tests) we fall back to cwd so developers see the file.
-    const base = app ? app.getPath('logs') : resolve(process.cwd(), '.buildoto-logs')
+    const base = app ? app.getPath('logs') : resolve(process.cwd(), SIDECAR_LOG_DIR)
     mkdirSync(base, { recursive: true })
-    return join(base, 'freecad-sidecar.log')
+    return join(base, SIDECAR_LOG_FILE)
   } catch {
     return null
   }
@@ -132,6 +144,8 @@ export class FreecadSidecar extends EventEmitter {
   private token = randomBytes(16).toString('hex')
   private readyPromise: Promise<FreecadSidecarStatus> | null = null
   private logStream: WriteStream | null = null
+  private pingTimer: NodeJS.Timeout | null = null
+  private crashCount = 0
 
   getStatus(): FreecadSidecarStatus {
     return this.status
@@ -183,13 +197,13 @@ export class FreecadSidecar extends EventEmitter {
 
   private async bootstrapWithRetries(): Promise<FreecadSidecarStatus> {
     let lastErr: Error | null = null
-    for (let attempt = 1; attempt <= BOOT_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= SIDECAR_BOOT_RETRY_ATTEMPTS; attempt++) {
       // Re-assert booting before each attempt: a previous attempt's child-exit
       // handler may have flipped status to `error`, and we want the UI to
       // reflect that we're still trying.
       this.setStatus({ state: 'booting' })
       try {
-        this.log(`bootstrap attempt ${attempt}/${BOOT_RETRY_ATTEMPTS}`)
+        this.log(`bootstrap attempt ${attempt}/${SIDECAR_BOOT_RETRY_ATTEMPTS}`)
         const ready = await this.bootstrap()
         this.log(`sidecar ready (attempt ${attempt}): v${ready.state === 'ready' ? ready.version : '?'}`)
         return ready
@@ -199,8 +213,8 @@ export class FreecadSidecar extends EventEmitter {
         // Clean up anything partial before the next try so the server port /
         // child handles are released.
         this.shutdownInternal(/*preserveStatus*/ true)
-        if (attempt < BOOT_RETRY_ATTEMPTS) {
-          await new Promise((r) => setTimeout(r, BOOT_RETRY_BACKOFF_MS))
+        if (attempt < SIDECAR_BOOT_RETRY_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, SIDECAR_BOOT_RETRY_BACKOFF_MS))
         }
       }
     }
@@ -229,6 +243,8 @@ export class FreecadSidecar extends EventEmitter {
             pythonVersion: response.python_version,
           }
           this.setStatus(ready)
+          this.crashCount = 0
+          this.startPingLoop()
           resolvePromise(ready)
         }
       }
@@ -245,7 +261,6 @@ export class FreecadSidecar extends EventEmitter {
       })
       this.child.stdout?.on('data', (b: Buffer) => {
         const line = b.toString().trimEnd()
-        console.log('[freecad stdout]', line)
         this.log(`stdout: ${line}`)
       })
       this.child.stderr?.on('data', (b: Buffer) => {
@@ -255,6 +270,7 @@ export class FreecadSidecar extends EventEmitter {
       })
       this.child.on('exit', (code, signal) => {
         this.child = null
+        this.stopPingLoop()
         const reason = `freecadcmd exited (code=${code}, signal=${signal})`
         this.log(reason)
         for (const p of this.pending.values()) {
@@ -263,7 +279,17 @@ export class FreecadSidecar extends EventEmitter {
         }
         this.pending.clear()
         if (this.status.state !== 'stopped') {
-          this.setStatus({ state: 'error', message: reason })
+          this.crashCount++
+          if (this.crashCount <= SIDECAR_AUTO_RESTART_MAX_ATTEMPTS) {
+            this.log(`auto-restart (attempt ${this.crashCount}/${SIDECAR_AUTO_RESTART_MAX_ATTEMPTS})`)
+            this.setStatus({ state: 'booting' })
+            this.bootstrap().catch((err: Error) => {
+              const msg = err instanceof Error ? err.message : String(err)
+              this.setStatus({ state: 'error', message: msg })
+            })
+          } else {
+            this.setStatus({ state: 'error', message: reason })
+          }
         }
       })
     })
@@ -324,11 +350,11 @@ export class FreecadSidecar extends EventEmitter {
     }
   }
 
-  async request(req: FreecadRequest, timeoutMs = 60_000): Promise<FreecadResponse> {
+  async request(req: FreecadRequest, timeoutMs = SIDECAR_REQUEST_DEFAULT_TIMEOUT_MS): Promise<FreecadResponse> {
     if (this.status.state !== 'ready') {
-      throw new Error(`FreeCAD sidecar not ready (state=${this.status.state})`)
+      throw new Error(`FreeCAD pas prêt (état=${this.status.state})`)
     }
-    if (!this.socket) throw new Error('FreeCAD sidecar socket not connected')
+    if (!this.socket) throw new Error('FreeCAD : socket non connectée')
     return new Promise<FreecadResponse>((resolvePromise, rejectPromise) => {
       const timer = setTimeout(() => {
         this.pending.delete(req.id)
@@ -345,11 +371,48 @@ export class FreecadSidecar extends EventEmitter {
     })
   }
 
+  private startPingLoop() {
+    this.stopPingLoop()
+    this.pingTimer = setInterval(() => {
+      if (this.socket && this.status.state === 'ready') {
+        this.request({ id: `ping-${Date.now()}`, type: 'ping' }, SIDECAR_PING_TIMEOUT_MS)
+          .then((res) => {
+            if (res.type !== 'pong') this.onPingFail()
+          })
+          .catch(() => this.onPingFail())
+      }
+    }, SIDECAR_PING_INTERVAL_MS)
+  }
+
+  private stopPingLoop() {
+    if (this.pingTimer !== null) {
+      clearInterval(this.pingTimer)
+      this.pingTimer = null
+    }
+  }
+
+  private onPingFail() {
+    if (this.status.state !== 'ready') return
+    this.crashCount++
+    this.log(`ping failed (crash #${this.crashCount})`)
+    if (this.crashCount <= SIDECAR_AUTO_RESTART_MAX_ATTEMPTS) {
+      this.shutdownInternal(true)
+      this.setStatus({ state: 'booting' })
+      this.bootstrap().catch((err: Error) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        this.setStatus({ state: 'error', message: msg })
+      })
+    } else {
+      this.setStatus({ state: 'error', message: 'freecadcmd ping failed' })
+    }
+  }
+
   async stop(): Promise<void> {
     if (this.status.state === 'stopped') return
     try {
+      this.stopPingLoop()
       if (this.socket && this.status.state === 'ready') {
-        await this.request({ id: `shutdown-${Date.now()}`, type: 'shutdown' }, 2_000).catch(() => undefined)
+        await this.request({ id: `shutdown-${Date.now()}`, type: 'shutdown' }, SIDECAR_SHUTDOWN_TIMEOUT_MS).catch(() => undefined)
       }
     } finally {
       this.shutdownInternal()

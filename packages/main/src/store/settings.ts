@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import Store from 'electron-store'
 import keytar from 'keytar'
 import {
+  DEFAULT_PROVIDER_ID,
   PROVIDER_IDS,
   type AppSettings,
   type McpServerConfig,
@@ -45,7 +46,7 @@ interface SettingsSchema {
 export const store = new Store<SettingsSchema>({
   defaults: {
     schemaVersion: 2,
-    defaultProvider: 'anthropic',
+    defaultProvider: DEFAULT_PROVIDER_ID,
     providerModels: {},
     mcpServers: [],
     recentProjects: [],
@@ -154,7 +155,7 @@ export async function setApiKey(
   providerId: ProviderId,
   apiKey: string,
 ): Promise<void> {
-  if (!apiKey.trim()) throw new Error('API key is empty')
+  if (!apiKey.trim()) throw new Error('La clé API est vide.')
   await keytar.setPassword(
     KEYTAR_SERVICE,
     PROVIDER_KEYTAR_ACCOUNTS[providerId],
@@ -187,10 +188,6 @@ export async function getProvidersStatus(): Promise<ProvidersStatus> {
     }
   }
   return out
-}
-
-export function getDefaultProvider(): ProviderId {
-  return store.get('defaultProvider')
 }
 
 export function setDefaultProvider(providerId: ProviderId): void {
@@ -232,7 +229,7 @@ export async function getGithubToken(): Promise<string | null> {
 }
 
 export async function setGithubToken(token: string): Promise<void> {
-  if (!token.trim()) throw new Error('GitHub token is empty')
+  if (!token.trim()) throw new Error('Le token GitHub est vide.')
   await keytar.setPassword(KEYTAR_SERVICE, KEYTAR_ACCOUNT_GITHUB, token.trim())
 }
 

@@ -7,6 +7,7 @@ export function CommitList() {
   const activeProject = useProjectStore((s) => s.activeProject)
   const gitStatus = useProjectStore((s) => s.gitStatus)
   const [commits, setCommits] = useState<GitCommit[]>([])
+  const [loading, setLoading] = useState(false)
   const { log } = useGitActions()
 
   useEffect(() => {
@@ -15,8 +16,13 @@ export function CommitList() {
       return
     }
     let cancelled = false
-    log(40).then((items) => {
-      if (!cancelled) setCommits(items)
+    setLoading(true)
+    Promise.resolve(log(40)).then((items) => {
+      if (!cancelled) setCommits(items ?? [])
+    }).catch(() => {
+      if (!cancelled) setCommits([])
+    }).finally(() => {
+      if (!cancelled) setLoading(false)
     })
     return () => {
       cancelled = true
@@ -39,7 +45,10 @@ export function CommitList() {
         )}
       </div>
       <ul className="flex-1 overflow-auto">
-        {commits.map((c) => (
+        {loading && (
+          <li className="px-3 py-4 text-xs text-muted-foreground">Chargement…</li>
+        )}
+        {!loading && commits.map((c) => (
           <li
             key={c.sha}
             className="flex items-baseline gap-2 border-b border-border/60 px-3 py-1.5 text-xs"
@@ -51,7 +60,7 @@ export function CommitList() {
             </span>
           </li>
         ))}
-        {commits.length === 0 && (
+        {!loading && commits.length === 0 && (
           <li className="px-3 py-4 text-xs text-muted-foreground">Aucun commit</li>
         )}
       </ul>

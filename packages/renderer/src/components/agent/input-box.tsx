@@ -17,6 +17,10 @@ export function InputBox({ apiKeySet }: { apiKeySet: boolean }) {
 
   const disabled = !apiKeySet || isRunning
 
+  const abort = async () => {
+    await window.buildoto.agent.abort()
+  }
+
   const submit = async () => {
     if (disabled || !value.trim()) return
     const text = value
@@ -91,9 +95,15 @@ export function InputBox({ apiKeySet }: { apiKeySet: boolean }) {
             'min-h-[56px] w-full resize-none rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50',
           )}
         />
-        <Button size="icon" onClick={() => void submit()} disabled={disabled || !value.trim()}>
-          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
+        {isRunning ? (
+          <Button size="icon" variant="destructive" onClick={() => void abort()}>
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </Button>
+        ) : (
+          <Button size="icon" onClick={() => void submit()} disabled={!value.trim()}>
+            <Send className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   )

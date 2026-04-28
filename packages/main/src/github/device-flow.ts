@@ -34,18 +34,32 @@ interface DeviceFlowState {
 
 let active: DeviceFlowState | null = null
 
+async function fetchWithRetry(url: string, init: RequestInit, retries = 3): Promise<Response> {
+  let lastErr: Error | null = null
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, init)
+      return res
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err))
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1)))
+    }
+  }
+  throw lastErr ?? new Error('Échec de la connexion réseau.')
+}
+
 export async function startDeviceAuth(): Promise<DeviceAuthStart> {
   if (!GITHUB_CLIENT_ID) {
     throw new Error(
-      'GitHub OAuth Client ID not configured. Fill BUILDOTO_GITHUB_CLIENT_ID in .env.local (see .env.local.example).',
+      'ID client GitHub OAuth non configuré (BUILDOTO_GITHUB_CLIENT_ID).',
     )
   }
-  const res = await fetch(GITHUB_DEVICE_CODE_ENDPOINT, {
+  const res = await fetchWithRetry(GITHUB_DEVICE_CODE_ENDPOINT, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ client_id: GITHUB_CLIENT_ID, scope: 'repo' }),
   })
-  if (!res.ok) throw new Error(`GitHub device code request failed: ${res.status}`)
+  if (!res.ok) throw new Error(`La demande de code GitHub a échoué (${res.status}).`)
   const body = (await res.json()) as DeviceCodeResponse
   const now = Date.now()
   active = {

@@ -23,9 +23,10 @@ import {
 } from '@buildoto/opencode-core/tool'
 import { buildotoAuth } from '../auth/buildoto'
 import { buildotoUsage } from '../auth/usage'
-import { BUILDOTO_AI_URL } from '../lib/constants'
+import { BUILDOTO_AI_URL, MAX_HISTORY_TURNS } from '../lib/constants'
 import { getApiKey, getProviderModel } from '../store/settings'
 import { mcpManager } from '../mcp/manager'
+import { setViewportUpdateCallback } from '../freecad/client'
 import { STRUCTURED_FREECAD_TOOLS } from '../tools/registry'
 import {
   createLegacyFreecadTool,
@@ -38,17 +39,9 @@ import {
   readSourcesFromSse,
 } from './buildoto-sources'
 import { sanitizeHistory } from './sanitize-history'
+import { DEFAULT_MODEL_BY_PROVIDER } from '../lib/constants'
+import { DEFAULT_PROVIDER_ID } from '@buildoto/shared'
 import { safeErrorMessage } from '../lib/safe-error'
-
-const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderId, string> = {
-  'buildoto-ai': 'buildoto-ai-v1',
-  anthropic: 'claude-sonnet-4-5-20250929',
-  openai: 'gpt-4o',
-  mistral: 'mistral-large-latest',
-  google: 'gemini-1.5-pro',
-  ollama: 'llama3.2',
-  openrouter: 'anthropic/claude-sonnet-4',
-}
 
 export interface AdapterState {
   providerId: ProviderId
@@ -81,11 +74,11 @@ class OpenCodeAdapter {
   private sourcesSinkRef: {
     current: ((sources: BuildotoRagSource[]) => void) | null
   } = { current: null }
-  // Initial fallback kept on 'anthropic' (not 'buildoto-ai') so the adapter
-  // never triggers an implicit portal auth flow before init() hydrates from
-  // the settings store. On nominal paths init() replaces this immediately.
+  // Initial fallback kept on DEFAULT_PROVIDER_ID (not 'buildoto-ai') so the
+  // adapter never triggers an implicit portal auth flow before init() hydrates
+  // from the settings store. On nominal paths init() replaces this immediately.
   private state: AdapterState = {
-    providerId: 'anthropic',
+    providerId: DEFAULT_PROVIDER_ID,
     model: DEFAULT_MODEL_BY_PROVIDER.anthropic,
     mode: 'build',
   }
@@ -145,6 +138,7 @@ class OpenCodeAdapter {
       onGeneration: args.onGeneration,
       onViewportUpdate: args.onViewportUpdate,
     }
+    setViewportUpdateCallback(args.onViewportUpdate ?? null)
     this.sourcesSinkRef.current = (sources) => {
       if (sources.length === 0) return
       args.onEvent({ type: 'sources', sources })
@@ -159,12 +153,18 @@ class OpenCodeAdapter {
     let accumulatedText = ''
     let stopReason = 'unknown'
 
+    // Truncate to the last N turns so we don't exceed the provider's context
+    // window. Keeps the last `MAX_HISTORY_TURNS` assistant+user pairs plus the
+    // original system-style messages.
+    const truncated = args.history.length > MAX_HISTORY_TURNS
+      ? args.history.slice(-MAX_HISTORY_TURNS) as CoreMessage[]
+      : args.history as CoreMessage[]
+
     // Repair any orphan tool_calls in the persisted history before handing
     // it to the provider — OpenAI-compatible backends reject turns with
     // unterminated tool calls. See sanitize-history.ts.
     const sanitizeReport = { injected: 0, orphanToolCallIds: [] as string[] }
-    const safeHistory = sanitizeHistory(
-      args.history as CoreMessage[],
+    const safeHistory = sanitizeHistory(truncated,
       sanitizeReport,
     )
     if (sanitizeReport.injected > 0) {
@@ -322,7 +322,10 @@ class OpenCodeAdapter {
       }
     }
     for (const id of [...this.registeredMcpIds]) {
-      if (!incomingIds.has(id)) this.registeredMcpIds.delete(id)
+      if (!incomingIds.has(id)) {
+        tools.unregister(id)
+        this.registeredMcpIds.delete(id)
+      }
     }
   }
 }

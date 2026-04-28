@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { defineTool, type ToolDefinition } from '@buildoto/opencode-core/tool'
+import type { ToolDefinition } from '@buildoto/opencode-core/tool'
+import { defineFreecadTool } from './registry'
 import { toolInvoke } from '../freecad/client'
 
 const POINT3 = z
@@ -39,7 +40,7 @@ const extrudeSchema = z.object({
 })
 
 export const partTools: ToolDefinition[] = [
-  defineTool({
+  defineFreecadTool({
     id: 'part_create_box',
     description:
       'Create a parametric Part::Box (length × width × height in mm). Optional position and name.',
@@ -49,8 +50,8 @@ export const partTools: ToolDefinition[] = [
       const data = await toolInvoke('part_create_box', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'part_create_cylinder',
     description:
       'Create a parametric Part::Cylinder (radius, height in mm). Axis defaults to Z.',
@@ -60,8 +61,8 @@ export const partTools: ToolDefinition[] = [
       const data = await toolInvoke('part_create_cylinder', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'part_boolean',
     description:
       'Boolean operation between two existing solids. operation: union | cut | common.',
@@ -71,8 +72,8 @@ export const partTools: ToolDefinition[] = [
       const data = await toolInvoke('part_boolean', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'part_extrude',
     description:
       'Extrude a sketch into a solid. Direction "normal" follows the sketch normal; otherwise pass a 3D vector.',
@@ -82,5 +83,5 @@ export const partTools: ToolDefinition[] = [
       const data = await toolInvoke('part_extrude', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
+  }),
 ]

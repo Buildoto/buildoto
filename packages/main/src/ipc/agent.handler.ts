@@ -17,6 +17,7 @@ import { openCodeAdapter } from '../agent/opencode-adapter'
 import { GitRepo } from '../git/repo'
 import { generateCommitMessage } from '../git/commit-message'
 import { safeErrorMessage } from '../lib/safe-error'
+import { BUILDOTO_DIR, BUILDOTO_SESSIONS_DIR } from '../lib/constants'
 import { readConfig, writeConfig } from '../project/project'
 import { projectRegistry } from '../project/registry'
 import { getApiKey } from '../store/settings'
@@ -68,7 +69,14 @@ export function registerAgentHandlers(window: BrowserWindow) {
   ipcMain.handle(
     IpcChannels.AGENT_RUN_TURN,
     async (_e, req: AgentRunTurnRequest): Promise<AgentRunTurnResult> => {
-      const { providerId } = openCodeAdapter.getState()
+      const { providerId, model } = openCodeAdapter.getState()
+      if (!model || model.trim() === '') {
+        const msg = providerId === 'ollama'
+          ? 'Modèle Ollama non configuré.'
+          : `Modèle non configuré pour ${providerId}.`
+        emit({ type: 'error', message: msg })
+        return { stopReason: 'error' }
+      }
       const anthropicKey = await getApiKey('anthropic')
       const hasCredential =
         providerId === 'ollama'
@@ -82,7 +90,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
             ? 'Connectez-vous à Buildoto AI dans les réglages.'
             : `Aucune clé API ${providerId} configurée. Ouvrez les réglages.`
         emit({ type: 'error', message: msg })
-        throw new Error(`No ${providerId} credential available`)
+        return { stopReason: 'error' }
       }
 
       if (activeController) activeController.abort()
@@ -150,6 +158,10 @@ export function registerAgentHandlers(window: BrowserWindow) {
         }
         return { stopReason: result.stopReason }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          emit({ type: 'canceled' })
+          return { stopReason: 'canceled' }
+        }
         console.error('[agent:run-turn] error:', err)
         const msg = safeErrorMessage(err)
         emit({ type: 'error', message: msg })
@@ -159,7 +171,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
           text: msg,
           ts: new Date().toISOString(),
         })
-        throw err
+        return { stopReason: 'error' }
       } finally {
         activeController = null
       }
@@ -264,7 +276,7 @@ async function handleGeneration(args: HandleGenerationArgs): Promise<string | nu
 
     const session = projectRegistry.getActiveSession()
     const sessionRel = session
-      ? `.buildoto/sessions/${session.sessionId}.json`
+      ? `${BUILDOTO_DIR}/${BUILDOTO_SESSIONS_DIR}/${session.sessionId}.json`
       : null
 
     const filesChanged = [rel]

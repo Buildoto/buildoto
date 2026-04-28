@@ -37,8 +37,8 @@ Règles techniques :
   automatiquement côté hôte — pas besoin d'y penser.`
 
 const PLAN_MODE_SUFFIX = `\n\nTu es en mode PLAN (lecture seule). Tu n'appelles que les outils
-d'introspection (list_documents, get_objects, get_object_properties,
-screenshot). Décris la géométrie existante et propose une démarche, mais
+d'introspection (list_documents, get_objects, get_object_properties).
+Décris la géométrie existante et propose une démarche, mais
 n'émets aucune mutation du document.`
 
 export async function buildSystemPrompt(mode: AgentMode): Promise<string> {

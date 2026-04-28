@@ -13,19 +13,25 @@ import type {
   ProjectReadFileResult,
   ProjectTreeEntry,
 } from '@buildoto/shared'
+import { DEFAULT_PROVIDER_ID } from '@buildoto/shared'
 import {
   BUILDOTO_CACHE_DIR,
   BUILDOTO_CONFIG_FILE,
   BUILDOTO_DIR,
   BUILDOTO_SESSIONS_DIR,
   DEFAULT_AGENT_MODEL,
+  GIT_AUTHOR_EMAIL,
+  GIT_AUTHOR_NAME,
+  MAX_TREE_DEPTH,
+  PROJECT_DIR_DOCUMENTS,
+  PROJECT_DIR_EXPORTS,
+  PROJECT_DIR_GENERATIONS,
+  PROJECT_ID_PREFIX,
+  SESSION_ID_PREFIX,
 } from '../lib/constants'
 import { buildAgentsMd } from '../templates/agents-md'
 import { buildGitignore } from '../templates/gitignore'
 import { buildReadmeMd } from '../templates/readme-md'
-
-const PROJECT_ID_PREFIX = 'prj_'
-const SESSION_ID_PREFIX = 'ses_'
 
 export function newProjectId(): string {
   return `${PROJECT_ID_PREFIX}${ulid()}`
@@ -76,9 +82,9 @@ export async function readConfig(projectPath: string): Promise<ProjectConfig> {
     await writeConfig(projectPath, migrated)
     return migrated
   }
-  throw new Error(
-    `Unsupported .buildoto/config.json schemaVersion: ${(parsed as { schemaVersion?: unknown }).schemaVersion}`,
-  )
+    throw new Error(
+      `Version du schéma de configuration non supportée : ${(parsed as { schemaVersion?: unknown }).schemaVersion}`,
+    )
 }
 
 export async function writeConfig(projectPath: string, config: ProjectConfig): Promise<void> {
@@ -111,19 +117,19 @@ interface CreateProjectOptions {
 
 export async function createProject(opts: CreateProjectOptions): Promise<Project> {
   const safeName = opts.name.trim()
-  if (!safeName) throw new Error('Project name is empty')
+  if (!safeName) throw new Error('Le nom du projet est vide.')
   const projectPath = join(opts.parentPath, safeName)
   if (existsSync(projectPath)) {
     const entries = await stat(projectPath).catch(() => null)
-    if (entries) throw new Error(`Path already exists: ${projectPath}`)
+    if (entries)     throw new Error(`Le dossier existe déjà : ${projectPath}`)
   }
 
   await mkdir(projectPath, { recursive: true })
   await mkdir(join(projectPath, BUILDOTO_DIR, BUILDOTO_SESSIONS_DIR), { recursive: true })
   await mkdir(join(projectPath, BUILDOTO_DIR, BUILDOTO_CACHE_DIR), { recursive: true })
-  await mkdir(join(projectPath, 'generations'), { recursive: true })
-  await mkdir(join(projectPath, 'documents'), { recursive: true })
-  await mkdir(join(projectPath, 'exports'), { recursive: true })
+  await mkdir(join(projectPath, PROJECT_DIR_GENERATIONS), { recursive: true })
+  await mkdir(join(projectPath, PROJECT_DIR_DOCUMENTS), { recursive: true })
+  await mkdir(join(projectPath, PROJECT_DIR_EXPORTS), { recursive: true })
 
   await writeFile(join(projectPath, 'AGENTS.md'), buildAgentsMd(safeName), 'utf8')
   await writeFile(join(projectPath, 'README.md'), buildReadmeMd(safeName), 'utf8')
@@ -135,7 +141,7 @@ export async function createProject(opts: CreateProjectOptions): Promise<Project
     name: safeName,
     createdAt: new Date().toISOString(),
     agent: {
-      defaultProvider: 'anthropic',
+      defaultProvider: DEFAULT_PROVIDER_ID,
       mode: 'build',
       providers: {
         anthropic: { model: DEFAULT_AGENT_MODEL, temperature: 1 },
@@ -144,7 +150,7 @@ export async function createProject(opts: CreateProjectOptions): Promise<Project
     mcpServers: [],
     git: { autoCommit: true, commitMessageLanguage: 'fr' },
     github: opts.github ?? null,
-    paths: { generations: 'generations', documents: 'documents', exports: 'exports' },
+    paths: { generations: PROJECT_DIR_GENERATIONS, documents: PROJECT_DIR_DOCUMENTS, exports: PROJECT_DIR_EXPORTS },
     activeSessionId: null,
   }
   await writeConfig(projectPath, config)
@@ -153,8 +159,8 @@ export async function createProject(opts: CreateProjectOptions): Promise<Project
   await git.init()
   await git.add(['.gitignore', 'AGENTS.md', 'README.md', '.buildoto/config.json'])
   await git
-    .env({ GIT_AUTHOR_NAME: 'Buildoto', GIT_AUTHOR_EMAIL: 'bot@buildoto.app' })
-    .env({ GIT_COMMITTER_NAME: 'Buildoto', GIT_COMMITTER_EMAIL: 'bot@buildoto.app' })
+    .env({ GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL })
+    .env({ GIT_COMMITTER_NAME: GIT_AUTHOR_NAME, GIT_COMMITTER_EMAIL: GIT_AUTHOR_EMAIL })
     .commit('chore: buildoto project init')
 
   return toProject(config, projectPath)
@@ -163,7 +169,7 @@ export async function createProject(opts: CreateProjectOptions): Promise<Project
 export async function openProject(projectPath: string): Promise<Project> {
   const absolute = resolve(projectPath)
   if (!isProjectDirectory(absolute)) {
-    throw new Error(`Not a Buildoto project (missing .buildoto/config.json): ${absolute}`)
+    throw new Error(`Ce dossier n'est pas un projet Buildoto (fichier .buildoto/config.json manquant) : ${absolute}`)
   }
   const config = await readConfig(absolute)
   return toProject(config, absolute)
@@ -180,7 +186,7 @@ export async function cloneProject(opts: CloneOptions): Promise<Project> {
   const git = simpleGit()
   await git.clone(opts.url, dest)
   if (!isProjectDirectory(dest)) {
-    throw new Error(`Cloned repo is not a Buildoto project (missing .buildoto/config.json): ${dest}`)
+    throw new Error(`Le dépôt cloné n'est pas un projet Buildoto (fichier .buildoto/config.json manquant) : ${dest}`)
   }
   return openProject(dest)
 }
@@ -188,11 +194,11 @@ export async function cloneProject(opts: CloneOptions): Promise<Project> {
 // ── File IO, scoped to the project path to prevent escape via ../ ───────────
 
 export function resolveWithin(projectPath: string, relativePath: string): string {
-  if (isAbsolute(relativePath)) throw new Error(`Absolute path rejected: ${relativePath}`)
+  if (isAbsolute(relativePath)) throw new Error(`Chemin absolu refusé : ${relativePath}`)
   const resolved = resolve(projectPath, relativePath)
   const rel = relative(projectPath, resolved)
   if (rel.startsWith('..') || rel.split(sep).includes('..')) {
-    throw new Error(`Path escapes project root: ${relativePath}`)
+    throw new Error(`Le chemin sort du dossier du projet : ${relativePath}`)
   }
   return resolved
 }
@@ -203,7 +209,7 @@ export async function readProjectFile(
 ): Promise<ProjectReadFileResult> {
   const abs = resolveWithin(projectPath, relativePath)
   const s = await stat(abs)
-  if (s.isDirectory()) throw new Error(`Cannot read a directory: ${relativePath}`)
+  if (s.isDirectory()) throw new Error(`Impossible de lire un dossier : ${relativePath}`)
   const buf = await readFile(abs)
   const isText = isLikelyText(relativePath)
   return isText
@@ -250,7 +256,7 @@ function isLikelyText(path: string): boolean {
 
 const IGNORED_TOP_LEVEL = new Set(['.git', 'node_modules'])
 
-export async function listTree(projectPath: string, maxDepth = 4): Promise<ProjectTreeEntry[]> {
+export async function listTree(projectPath: string, maxDepth = MAX_TREE_DEPTH): Promise<ProjectTreeEntry[]> {
   return readDir(projectPath, '.', 0, maxDepth)
 }
 

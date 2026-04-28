@@ -66,7 +66,7 @@ class McpManager {
 
   async restart(name: string): Promise<McpServerStatus> {
     const config = listMcpServers().find((s) => s.name === name)
-    if (!config) throw new Error(`Unknown MCP server: ${name}`)
+    if (!config)       throw new Error(`Serveur MCP inconnu : ${name}`)
     return this.upsert(config)
   }
 

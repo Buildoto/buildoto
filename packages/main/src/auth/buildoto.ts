@@ -24,11 +24,13 @@ import keytar from 'keytar'
 import type { BuildotoAuthState } from '@buildoto/shared'
 
 import {
+  AUTH_TIMEOUT_MS,
   BUILDOTO_DEEP_LINK_SCHEME,
   BUILDOTO_PORTAL_API_URL,
   BUILDOTO_PORTAL_URL,
   KEYTAR_ACCOUNT_BUILDOTO_REFRESH,
   KEYTAR_SERVICE,
+  REFRESH_SKEW_SEC,
 } from '../lib/constants'
 
 interface PendingAuth {
@@ -53,13 +55,6 @@ interface SessionInfo {
   email: string | null
   planTier: string
 }
-
-const AUTH_TIMEOUT_MS = 2 * 60 * 1000
-// Access JWT TTL is 300 s. We refresh eagerly at 90 s left so long streaming
-// turns (tool loops can exceed 30–60 s) never send a JWT that expires in
-// flight. 30 s was too tight and caused "invalid or expired access token"
-// after ~4 min turns.
-const REFRESH_SKEW_SEC = 90
 const REDIRECT_URI = `${BUILDOTO_DEEP_LINK_SCHEME}://auth`
 
 class BuildotoAuthManager extends EventEmitter {
@@ -97,8 +92,9 @@ class BuildotoAuthManager extends EventEmitter {
         })
       }
     } catch {
-      // Refresh failed (revoked, expired). Clear local secret and report out.
-      await this.clearRefreshToken()
+      // refreshAccessToken() already handles 401 internally by clearing the
+      // token and setting signed-out. For other errors (network, 500) the
+      // token stays intact so the next getAccessToken() retries.
       this.setState({ kind: 'signed-out' })
     }
     return this.currentState
@@ -240,7 +236,7 @@ class BuildotoAuthManager extends EventEmitter {
     this.inflightRefresh = (async () => {
       try {
         const refresh = await this.readRefreshToken()
-        if (!refresh) throw new Error('Not signed in to Buildoto AI')
+        if (!refresh) throw new Error('Non connecté à Buildoto AI')
         const res = await fetch(`${BUILDOTO_PORTAL_API_URL}/desktop/token/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -253,7 +249,7 @@ class BuildotoAuthManager extends EventEmitter {
             this.session = null
             this.setState({ kind: 'signed-out' })
           }
-          throw new Error(`Refresh failed (${res.status})`)
+          throw new Error(`Échec du rafraîchissement (${res.status})`)
         }
         const body = (await res.json()) as {
           access_token: string
@@ -281,7 +277,7 @@ class BuildotoAuthManager extends EventEmitter {
     })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`Token exchange failed (${res.status}): ${text}`)
+      throw new Error(`Échange de token échoué (${res.status}) : ${text}`)
     }
     const body = (await res.json()) as {
       access_token: string
@@ -293,7 +289,7 @@ class BuildotoAuthManager extends EventEmitter {
 
   private applyAccessToken(jwt: string): void {
     const claims = decodeJwtClaims(jwt)
-    if (!claims) throw new Error('Invalid access token')
+    if (!claims) throw new Error('Token d\'accès invalide.')
     const expSec = typeof claims.exp === 'number' ? claims.exp : 0
     const userId = typeof claims.sub === 'string' ? claims.sub : ''
     const planTier =

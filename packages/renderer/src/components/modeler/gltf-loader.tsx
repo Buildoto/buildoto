@@ -1,10 +1,23 @@
-import { useEffect, useState } from 'react'
+import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from 'react'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Box3, Vector3, type Object3D } from 'three'
 import { useThree } from '@react-three/fiber'
 import { useSessionStore } from '@/stores/session-store'
 
-export function GltfScene() {
+class GltfErrorBoundary extends Component<{ children: ReactNode }> {
+  override state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  override componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[gltf] error boundary caught:', error, info.componentStack)
+  }
+  override render() {
+    return this.state.hasError
+      ? <div className="flex h-full items-center justify-center text-xs text-destructive">Erreur d'affichage 3D</div>
+      : this.props.children
+  }
+}
+
+function InnerGltfScene() {
   const gltfBase64 = useSessionStore((s) => s.gltfBase64)
   const [scene, setScene] = useState<Object3D | null>(null)
   const { camera, controls } = useThree() as unknown as {
@@ -61,4 +74,8 @@ export function GltfScene() {
 
   if (!scene) return null
   return <primitive object={scene} />
+}
+
+export function GltfScene() {
+  return <GltfErrorBoundary><InnerGltfScene /></GltfErrorBoundary>
 }

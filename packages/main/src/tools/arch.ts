@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { defineTool, type ToolDefinition } from '@buildoto/opencode-core/tool'
+import type { ToolDefinition } from '@buildoto/opencode-core/tool'
+import { defineFreecadTool } from './registry'
 import { toolInvoke } from '../freecad/client'
 
 const POINT3 = z.tuple([z.number(), z.number(), z.number()])
@@ -10,13 +11,11 @@ const wallSchema = z.object({
   thickness_mm: z.number().positive(),
   alignment: z.enum(['left', 'center', 'right']).optional(),
   position: POINT3.optional(),
-  material: z.string().optional(),
 })
 
 const floorSchema = z.object({
   polygon: z.array(POINT3).min(3),
   thickness_mm: z.number().positive(),
-  material: z.string().optional(),
 })
 
 const windowSchema = z.object({
@@ -41,7 +40,7 @@ const roofSchema = z.object({
 })
 
 export const archTools: ToolDefinition[] = [
-  defineTool({
+  defineFreecadTool({
     id: 'arch_create_wall',
     description:
       'Create a parametric BIM wall (length, height, thickness in mm). Alignment: left | center | right (centerline relative to base line).',
@@ -51,8 +50,8 @@ export const archTools: ToolDefinition[] = [
       const data = await toolInvoke('arch_create_wall', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'arch_create_floor',
     description:
       'Create a BIM floor / slab from a closed polygon footprint and a thickness in mm.',
@@ -62,8 +61,8 @@ export const archTools: ToolDefinition[] = [
       const data = await toolInvoke('arch_create_floor', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'arch_create_window',
     description:
       'Cut a window into a host wall. Offsets are in millimetres along and up the wall.',
@@ -73,8 +72,8 @@ export const archTools: ToolDefinition[] = [
       const data = await toolInvoke('arch_create_window', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'arch_create_door',
     description:
       'Cut a door into a host wall. Offset is along the wall in millimetres; door sits at the wall base.',
@@ -84,8 +83,8 @@ export const archTools: ToolDefinition[] = [
       const data = await toolInvoke('arch_create_door', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'arch_create_roof',
     description:
       'Create a BIM roof from a base wire / face object id, with slope angle (degrees) and thickness (mm).',
@@ -95,5 +94,5 @@ export const archTools: ToolDefinition[] = [
       const data = await toolInvoke('arch_create_roof', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
+  }),
 ]

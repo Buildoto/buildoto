@@ -70,7 +70,6 @@ export const PLAN_MODE_READONLY_TOOL_IDS: readonly string[] = [
   'list_documents',
   'get_objects',
   'get_object_properties',
-  'screenshot',
 ]
 
 export function buildPresetAllowlist(
@@ -112,91 +111,86 @@ export async function runAgentTurn(
 
   let finishReason = 'unknown'
 
-  try {
-    const result = streamText({
-      model,
-      system: agentConfig.systemPrompt,
-      messages,
-      tools: aiTools,
-      maxSteps,
-      abortSignal,
-    })
+  const result = streamText({
+    model,
+    system: agentConfig.systemPrompt,
+    messages,
+    tools: aiTools,
+    maxSteps,
+    abortSignal,
+  })
 
-    for await (const part of result.fullStream) {
-      // The AI SDK's `TextStreamPart<TOOLS>` collapses the `tool-result`
-      // variant to `never` when TOOLS is a generic `Record<string, Tool>`,
-      // so we narrow on the runtime tag and re-cast field-by-field.
-      const tag = (part as { type: string }).type
-      switch (tag) {
-        case 'text-delta':
-          onEvent({
-            type: 'token_delta',
-            delta: (part as { textDelta: string }).textDelta,
-          })
-          break
-        case 'tool-call': {
-          const tc = part as {
-            toolCallId: string
-            toolName: string
-            args: unknown
-          }
-          onEvent({
-            type: 'tool_call',
-            toolCallId: tc.toolCallId,
-            toolName: tc.toolName,
-            input: tc.args,
-            provenance: toolDefById.get(tc.toolName)?.provenance ?? 'builtin',
-          })
-          break
+  for await (const part of result.fullStream) {
+    // The AI SDK's `TextStreamPart<TOOLS>` collapses the `tool-result`
+    // variant to `never` when TOOLS is a generic `Record<string, Tool>`,
+    // so we narrow on the runtime tag and re-cast field-by-field.
+    const tag = (part as { type: string }).type
+    switch (tag) {
+      case 'text-delta':
+        onEvent({
+          type: 'token_delta',
+          delta: (part as { textDelta: string }).textDelta,
+        })
+        break
+      case 'tool-call': {
+        const tc = part as {
+          toolCallId: string
+          toolName: string
+          args: unknown
         }
-        case 'tool-result': {
-          const tr = part as unknown as { toolCallId: string; result: unknown }
-          onEvent({
-            type: 'tool_result',
-            toolCallId: tr.toolCallId,
-            output: tr.result,
-            isError: false,
-          })
-          break
-        }
-        case 'error': {
-          const e = (part as { error: unknown }).error
-          onEvent({
-            type: 'error',
-            message: coerceStreamError(e),
-          })
-          try {
-            console.error('[adapter:error-part]', e)
-          } catch {
-            /* ignore */
-          }
-          break
-        }
-        case 'finish':
-          finishReason = (part as { finishReason: string }).finishReason
-          break
-        default:
-          // step-start/finish, reasoning, source, file, etc. are ignored at
-          // this layer; the host can wire them later if needed.
-          break
+        onEvent({
+          type: 'tool_call',
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.args,
+          provenance: toolDefById.get(tc.toolName)?.provenance ?? 'builtin',
+        })
+        break
       }
+      case 'tool-result': {
+        const tr = part as unknown as { toolCallId: string; result: unknown }
+        onEvent({
+          type: 'tool_result',
+          toolCallId: tr.toolCallId,
+          output: tr.result,
+          isError: false,
+        })
+        break
+      }
+      case 'error': {
+        const e = (part as { error: unknown }).error
+        onEvent({
+          type: 'error',
+          message: coerceStreamError(e),
+        })
+        try {
+          console.error('[adapter:error-part]', e)
+        } catch {
+          /* ignore */
+        }
+        break
+      }
+      case 'finish':
+        finishReason = (part as { finishReason: string }).finishReason
+        break
+      default:
+        // step-start/finish, reasoning, source, file, etc. are ignored at
+        // this layer; the host can wire them later if needed.
+        break
     }
-
-    const text = await result.text
-    const responseMessages = (await result.response).messages
-    const newHistory: CoreMessage[] = [...messages, ...responseMessages]
-
-    onEvent({
-      type: 'turn_finish',
-      finishReason,
-      usage: await result.usage,
-    })
-
-    return { history: newHistory, finishReason, text }
-  } catch (err) {
-    onEvent({ type: 'error', message: coerceStreamError(err) })
-    throw err
   }
+
+  const text = await result.text
+  const responseMessages = (await result.response).messages
+  const newHistory: CoreMessage[] = [...messages, ...responseMessages]
+
+  onEvent({
+    type: 'turn_finish',
+    finishReason,
+    usage: await result.usage,
+  })
+
+  return { history: newHistory, finishReason, text }
 }
 
 // Streams can surface plain objects (or fetch Response errors) instead of

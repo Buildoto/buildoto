@@ -63,7 +63,8 @@ Claude has **full control** over both layers:
 pnpm install                  # Install all workspace dependencies (runs postinstall: FreeCAD download)
 pnpm dev                      # Start Electron app + Vite renderer (parallel)
 pnpm build                    # Build all packages
-pnpm test                     # Unit tests across all packages
+pnpm type-check               # TypeScript strict check across all packages
+pnpm lint                     # ESLint (entire repo)
 pnpm lint                     # ESLint
 pnpm type-check               # TypeScript strict check
 
@@ -256,13 +257,8 @@ Barrel `index.ts` mandatory for folders with 3+ exported files. Add every new fi
 
 | File | Content |
 |------|---------|
-| `docs/BUILDOTO_SPRINT_1.md` | Foundation: shell + agent MVP + FreeCAD sidecar |
-| `docs/BUILDOTO_SPRINT_2.md` | GitHub integration + project management |
-| `docs/BUILDOTO_SPRINT_3.md` | OpenCode embedding + multi-provider + MCP |
-| `docs/BUILDOTO_SPRINT_4.md` | Polish + packaging + alpha release |
-| `docs/BUILDOTO_SPRINT_5.md` | RAG corpus ingestion pipeline |
-| `docs/BUILDOTO_SPRINT_6.md` | Mistral + RAG inference service |
-| `docs/BUILDOTO_SPRINT_7.md` | Stripe billing + subscription portal |
-| `docs/BUILDOTO_SPRINT_8.md` | Buildoto AI provider + v1.0 launch |
+| `docs/audit-codebase.md` | Code audit findings + todo tracker |
+| `docs/production-readiness-plan.md` | Production readiness plan + status |
 | `packages/shared/src/ipc-types.ts` | All IPC channels + payload types |
-| `packages/shared/src/freecad-protocol.ts` | FreeCAD WebSocket protocol |
+| `packages/shared/src/freecad-protocol.ts` | FreeCAD TCP protocol |
+| `packages/shared/src/project-types.ts` | Project, session, provider, Git types |

@@ -54,12 +54,9 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           BUILDOTO_GITHUB_CLIENT_ID: ${{ secrets.BUILDOTO_GITHUB_CLIENT_ID }}
+          # Code signing env vars removed: no Apple or Microsoft licenses.
+          # Buildoto ships unsigned — Gatekeeper/SmartScreen warnings expected.
         run: ${{ matrix.package_cmd }}

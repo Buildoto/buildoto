@@ -33,7 +33,7 @@ export interface CreateRepoInput {
 
 export async function createRepo(input: CreateRepoInput): Promise<GithubCreateRepoResult> {
   const octokit = await getOctokit()
-  if (!octokit) throw new Error('GITHUB_UNAUTHORIZED')
+  if (!octokit) throw new Error('Authentification GitHub requise.')
   try {
     const { data } = await octokit.rest.repos.createForAuthenticatedUser({
       name: input.name,
@@ -65,9 +65,9 @@ export async function getLogin(): Promise<string | null> {
 function mapOctokitError(err: unknown): Error {
   if (err && typeof err === 'object' && 'status' in err) {
     const status = (err as { status: number }).status
-    if (status === 401) return new Error('GITHUB_UNAUTHORIZED')
-    if (status === 403) return new Error('GITHUB_RATE_LIMITED')
-    if (status === 422) return new Error('GITHUB_VALIDATION_FAILED')
+    if (status === 401) return new Error('Authentification GitHub requise.')
+    if (status === 403) return new Error('Limite de taux GitHub atteinte. Réessaye plus tard.')
+    if (status === 422) return new Error('Données de création de dépôt invalides.')
   }
   return err instanceof Error ? err : new Error(String(err))
 }

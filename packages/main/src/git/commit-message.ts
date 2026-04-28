@@ -1,5 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { COMMIT_MESSAGE_MODEL } from '../lib/constants'
+import {
+  COMMIT_MESSAGE_CODE_SLICE,
+  COMMIT_MESSAGE_MAX_TOKENS,
+  COMMIT_MESSAGE_MODEL,
+  COMMIT_MESSAGE_TRUNCATE,
+} from '../lib/constants'
 
 const SYSTEM = `Tu génères des messages de commit Git au format Conventional Commits (fr).
 Format: "<type>: <description courte impérative>" sur une seule ligne, max 72 caractères.
@@ -24,7 +29,7 @@ export async function generateCommitMessage(input: CommitMessageInput): Promise<
     const client = new Anthropic({ apiKey: input.apiKey })
     const response = await client.messages.create({
       model: COMMIT_MESSAGE_MODEL,
-      max_tokens: 80,
+      max_tokens: COMMIT_MESSAGE_MAX_TOKENS,
       system: SYSTEM,
       messages: [
         {
@@ -34,7 +39,7 @@ export async function generateCommitMessage(input: CommitMessageInput): Promise<
               type: 'text',
               text: `Python FreeCAD exécuté:
 \`\`\`python
-${input.code.slice(0, 1200)}
+${input.code.slice(0, COMMIT_MESSAGE_CODE_SLICE)}
 \`\`\`
 
 Fichiers modifiés: ${input.filesChanged.join(', ')}
@@ -54,7 +59,7 @@ Rédige un seul message de commit concis.`,
       .trim()
     const firstLine = raw.split('\n')[0]?.trim() ?? ''
     if (!firstLine) return fallback
-    return firstLine.slice(0, 100)
+    return firstLine.slice(0, COMMIT_MESSAGE_TRUNCATE)
   } catch (err) {
     console.warn('[commit-message] generation failed, using fallback:', err)
     return fallback

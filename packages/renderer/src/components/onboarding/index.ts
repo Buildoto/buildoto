@@ -1,0 +1,6 @@
+export { OnboardingWizard } from './onboarding-wizard'
+export { StepChooseAi } from './step-choose-ai'
+export { StepFirstProject } from './step-first-project'
+export { StepGithub } from './step-github'
+export { StepTour } from './step-tour'
+export { StepWelcome } from './step-welcome'

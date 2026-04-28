@@ -5,6 +5,8 @@ import type {
   GitPushResult,
   GitStatus,
 } from '@buildoto/shared'
+import { ERR_NO_STAGED_CHANGES } from '../lib/constants'
+import { safeErrorMessage } from '../lib/safe-error'
 
 export class GitRepo {
   private git: SimpleGit
@@ -55,7 +57,7 @@ export class GitRepo {
     }
     const status = await this.git.status()
     if (status.staged.length === 0) {
-      throw new Error('No staged changes to commit')
+      throw new Error(ERR_NO_STAGED_CHANGES)
     }
     const result = await this.git
       .env({ GIT_AUTHOR_NAME: 'Buildoto', GIT_AUTHOR_EMAIL: 'bot@buildoto.app' })
@@ -69,14 +71,14 @@ export class GitRepo {
     try {
       const remotes = await this.git.getRemotes(true)
       const origin = remotes.find((r) => r.name === 'origin')
-      if (!origin) return { ok: false, remote: '', branch: '', error: 'No remote configured' }
+      if (!origin) return { ok: false, remote: '', branch: '', error: 'Aucun dépôt distant configuré.' }
       const status = await this.git.status()
       const branch = status.current ?? 'main'
       await this.git.push('origin', branch, ['--set-upstream'])
       this.invalidateStatus()
       return { ok: true, remote: origin.refs.push, branch }
     } catch (err) {
-      return { ok: false, remote: '', branch: '', error: err instanceof Error ? err.message : String(err) }
+      return { ok: false, remote: '', branch: '', error: safeErrorMessage(err) }
     }
   }
 
@@ -86,7 +88,7 @@ export class GitRepo {
       this.invalidateStatus()
       return { ok: true, summary: `${res.summary.changes} change(s), ${res.summary.insertions} insertion(s)` }
     } catch (err) {
-      return { ok: false, summary: '', error: err instanceof Error ? err.message : String(err) }
+      return { ok: false, summary: '', error: safeErrorMessage(err) }
     }
   }
 
@@ -120,6 +122,16 @@ export class GitRepo {
     } else {
       await this.git.addRemote(name, url)
     }
+  }
+
+  async fetch(): Promise<void> {
+    await this.git.fetch()
+    this.invalidateStatus()
+  }
+
+  async abortMerge(): Promise<void> {
+    await this.git.raw(['merge', '--abort'])
+    this.invalidateStatus()
   }
 
   raw(): SimpleGit {

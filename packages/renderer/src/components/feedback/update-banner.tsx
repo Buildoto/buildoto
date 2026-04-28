@@ -3,6 +3,7 @@ import { Download, RotateCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { UpdaterStatus } from '@buildoto/shared'
 import { useTelemetry } from '@/hooks/use-telemetry'
+import { cn } from '@/lib/utils'
 
 export function UpdateBanner() {
   const [status, setStatus] = useState<UpdaterStatus>({ kind: 'idle' })
@@ -75,9 +76,10 @@ function Banner({
 }) {
   return (
     <div
-      className={`flex items-center gap-3 border-b border-border px-4 py-2 text-xs ${
-        highlight ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-      }`}
+      className={cn(
+        'flex items-center gap-3 border-b border-border px-4 py-2 text-xs',
+        highlight ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+      )}
     >
       {children}
     </div>

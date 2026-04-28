@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import type { UpdaterStatus } from '@buildoto/shared'
+import { safeErrorMessage } from '../lib/safe-error'
 import { getAppSettings } from '../store/settings'
 
 // electron-updater is loaded lazily so type-check passes when the dep is
@@ -35,7 +36,7 @@ async function loadAutoUpdater(): Promise<
   } catch (err) {
     console.warn(
       '[updater] electron-updater not available:',
-      err instanceof Error ? err.message : err,
+      safeErrorMessage(err),
     )
     return null
   }
@@ -89,8 +90,7 @@ export async function initUpdater(handler: StatusHandler): Promise<void> {
     setStatus({ kind: 'downloaded', version })
   })
   autoUpdater.on('error', (err: unknown) => {
-    const message = err instanceof Error ? err.message : String(err)
-    setStatus({ kind: 'error', message })
+    setStatus({ kind: 'error', message: safeErrorMessage(err) })
   })
 
   try {
@@ -98,7 +98,7 @@ export async function initUpdater(handler: StatusHandler): Promise<void> {
   } catch (err) {
     setStatus({
       kind: 'error',
-      message: err instanceof Error ? err.message : 'check failed',
+      message: safeErrorMessage(err, 'check failed'),
     })
   }
 }
@@ -113,7 +113,7 @@ export async function checkForUpdates(): Promise<UpdaterStatus> {
   } catch (err) {
     setStatus({
       kind: 'error',
-      message: err instanceof Error ? err.message : 'check failed',
+      message: safeErrorMessage(err, 'check failed'),
     })
   }
   return currentStatus
@@ -127,7 +127,7 @@ export async function downloadUpdate(): Promise<UpdaterStatus> {
   } catch (err) {
     setStatus({
       kind: 'error',
-      message: err instanceof Error ? err.message : 'download failed',
+      message: safeErrorMessage(err, 'download failed'),
     })
   }
   return currentStatus

@@ -1,33 +1,28 @@
 # Buildoto Brand Kit
 
-Assets visuels pour Buildoto. Spec complète dans `docs/sprint-4/brand-kit.md`.
+Assets visuels pour Buildoto.
 
-## Structure attendue
+## Fichiers
 
-```
-brand/
-├── logo-wordmark.svg          # "Buildoto" + mark, variante claire
-├── logo-wordmark-dark.svg     # variante sombre
-├── logo-mark.svg              # mark compact (sans texte)
-├── icon.png                   # 1024×1024 source pour electron-icon-builder
-├── favicon.svg
-├── og-card.png                # 1200×630 pour les vitrines
-├── onboarding/
-│   ├── welcome.svg
-│   ├── api-key.svg
-│   ├── github.svg
-│   ├── project.svg
-│   └── tour.svg
-└── screenshots/
-    ├── agent.png
-    ├── viewport.png
-    └── history.png
-```
+| Fichier | Source | Usage |
+|---------|--------|-------|
+| `icon-source.png` | `icon-buildoto.png` | Icône applicative (macOS .icns, Windows .ico, Linux .png) |
+| `logo-wordmark.png` | `logo-buildoto.png` | Logo complet pour site web et docs |
+| `icon.svg` | Placeholder SVG | Fallback si le PNG source n'est pas disponible |
 
 ## Pipeline icônes
 
-`scripts/generate-icons.ts` consomme `brand/icon.png` et produit `build/icon.icns`,
-`build/icon.ico`, `build/icons/*.png` via `electron-icon-builder`.
+`scripts/generate-icons.ts` consomme `brand/icon-source.png` et produit :
+- `build/icon.icns` — macOS
+- `build/icon-1024.png` — source pour Windows .ico (auto-converti par electron-builder)
+- `build/icons/*.png` — Linux (64, 128, 256, 512 px)
+
+Lancer la génération :
+```bash
+npx tsx scripts/generate-icons.ts
+```
+
+Les icônes sont regénérées automatiquement avant chaque `pnpm package:*` (via `postinstall`).
 
 ## Palette
 
@@ -38,12 +33,3 @@ brand/
 
 - Inter (UI)
 - JetBrains Mono (code / agent)
-
-Self-hostés via Fontsource dans le renderer.
-
-## Statut actuel
-
-Assets à produire. Tant qu'ils ne sont pas livrés, `scripts/generate-icons.ts` est no-op et
-electron-builder utilise ses défauts (icône générique). La vitrine Astro et les docs VitePress
-utilisent des placeholders `/favicon.svg` et `/og.png` qui doivent être remplacés avant le premier
-déploiement Cloudflare Pages.

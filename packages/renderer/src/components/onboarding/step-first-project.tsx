@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCloneProject, useCreateProject, useOpenProject, usePickDirectory } from '@/hooks/use-project'
+import { cn } from '@/lib/utils'
 
 type Mode = 'new' | 'clone' | 'open'
 
@@ -165,9 +166,10 @@ function ModePicker({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
       {items.map((it) => (
         <label
           key={it.value}
-          className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 ${
-            mode === it.value ? 'border-primary bg-primary/5' : 'border-border bg-card'
-          }`}
+          className={cn(
+            'flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2',
+            mode === it.value ? 'border-primary bg-primary/5' : 'border-border bg-card',
+          )}
         >
           <input
             type="radio"

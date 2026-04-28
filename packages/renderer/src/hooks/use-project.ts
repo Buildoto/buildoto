@@ -9,15 +9,18 @@ export function useProjectBootstrap() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([window.buildoto.project.getActive(), window.buildoto.project.listRecent()])
-      .then(([active, recent]) => {
-        if (cancelled) return
-        setActiveProject(active)
-        setRecentProjects(recent)
-      })
-      .finally(() => {
-        if (!cancelled) setBootstrapped(true)
-      })
+    Promise.all([
+      window.buildoto.project.getActive().catch(() => null),
+      window.buildoto.project.listRecent().catch(() => []),
+    ]).then(([active, recent]) => {
+      if (cancelled) return
+      setActiveProject(active)
+      setRecentProjects(recent)
+    }).catch(() => {
+      // Both fallbacks already handle errors — this catch is a safety net.
+    }).finally(() => {
+      if (!cancelled) setBootstrapped(true)
+    })
     return () => {
       cancelled = true
     }
@@ -48,12 +51,6 @@ export function useOpenProject() {
 export function usePickDirectory() {
   return useCallback(async (title?: string) => {
     return window.buildoto.project.pickDirectory({ title })
-  }, [])
-}
-
-export function useCloseProject() {
-  return useCallback(async () => {
-    await window.buildoto.project.close()
   }, [])
 }
 

@@ -11,6 +11,7 @@ import {
 import { cancelDeviceAuth, pollDeviceAuth, startDeviceAuth } from '../github/device-flow'
 import { createRepo, getAuthStatus } from '../github/octokit'
 import { GitRepo } from '../git/repo'
+import { ERR_NO_ACTIVE_PROJECT } from '../lib/constants'
 import { projectRegistry } from '../project/registry'
 import { clearGithubToken } from '../store/settings'
 
@@ -44,7 +45,7 @@ export function registerGithubHandlers() {
     IpcChannels.GITHUB_LINK_REMOTE,
     async (_e, req: GithubLinkRemoteRequest): Promise<void> => {
       const project = projectRegistry.get()
-      if (!project) throw new Error('No active project')
+      if (!project) throw new Error(ERR_NO_ACTIVE_PROJECT)
       const repo = new GitRepo(project.path)
       await repo.addRemote('origin', req.cloneUrl)
     },

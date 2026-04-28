@@ -1,6 +1,12 @@
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, GitCommit as GitCommitIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, FileText, GitCommit as GitCommitIcon, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { BranchSwitcher } from './branch-switcher'
 import { CommitDialog } from './commit-dialog'
 import { CommitList } from './commit-list'
@@ -13,7 +19,10 @@ export function GitPanel() {
   const [commitOpen, setCommitOpen] = useState(false)
   const [busy, setBusy] = useState<null | 'push' | 'pull'>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [diffContent, setDiffContent] = useState<string | null>(null)
   const { push, pull } = useGitActions()
+
+  const inConflict = !!status && status.conflicted.length > 0
 
   if (!activeProject) {
     return (
@@ -61,12 +70,31 @@ export function GitPanel() {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1">
+          {status && status.unstaged.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={async () => {
+                const d = await window.buildoto.git.diff({ path: undefined })
+                setDiffContent(d || '(aucune modification)')
+              }}
+            >
+              <FileText className="mr-1 h-3.5 w-3.5" />
+              Diff
+            </Button>
+          )}
           <Button size="sm" onClick={() => setCommitOpen(true)} disabled={!dirty}>
             <GitCommitIcon className="mr-1 h-3.5 w-3.5" />
             Commit
           </Button>
           {hasRemote && (
             <>
+              <Button size="sm" variant="ghost" onClick={async () => {
+                await window.buildoto.git.fetch()
+              }} disabled={busy !== null}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                Fetch
+              </Button>
               <Button size="sm" variant="outline" onClick={() => void doPull()} disabled={busy !== null}>
                 <ArrowDown className="mr-1 h-3.5 w-3.5" />
                 Pull
@@ -81,6 +109,32 @@ export function GitPanel() {
       </div>
       {toast && (
         <div className="border-b border-border bg-muted/30 px-3 py-1 text-xs">{toast}</div>
+      )}
+      {diffContent && (
+        <Dialog open={!!diffContent} onOpenChange={() => setDiffContent(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Diff</DialogTitle>
+            </DialogHeader>
+            <pre className="max-h-[60vh] overflow-auto rounded bg-muted p-4 text-xs font-mono text-foreground">
+              {diffContent}
+            </pre>
+          </DialogContent>
+        </Dialog>
+      )}
+      {inConflict && (
+        <div className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <span className="font-medium">{status!.conflicted.length} fichier(s) en conflit</span>
+          <span className="text-destructive/70">Résolvez les conflits, puis commitez.</span>
+          <button
+            className="ml-auto rounded px-2 py-0.5 text-destructive underline hover:no-underline"
+            onClick={async () => {
+              await window.buildoto.git.abortMerge()
+            }}
+          >
+            Annuler le merge
+          </button>
+        </div>
       )}
       <div className="min-h-0 flex-1">
         <CommitList />

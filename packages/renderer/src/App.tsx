@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { AppShell } from '@/components/layout/app-shell'
 import { CommandPalette } from '@/components/palette/command-palette'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
@@ -79,10 +79,14 @@ export function App() {
         const path = await window.buildoto.project.pickDirectory({
           title: 'Ouvrir un projet Buildoto',
         })
-        if (path) await window.buildoto.project.open({ path })
+        if (path) {
+          try { await window.buildoto.project.open({ path }) }
+          catch (e) { toast.error(String(e)) }
+        }
       }
       if (action.kind === 'open-recent') {
-        await window.buildoto.project.open({ path: action.path })
+        try { await window.buildoto.project.open({ path: action.path }) }
+        catch (e) { toast.error(String(e)) }
       }
     })
     return unsub
@@ -96,7 +100,10 @@ export function App() {
     const path = await window.buildoto.project.pickDirectory({
       title: 'Ouvrir un projet Buildoto',
     })
-    if (path) await window.buildoto.project.open({ path })
+    if (path) {
+      try { await window.buildoto.project.open({ path }) }
+      catch (e) { toast.error(String(e)) }
+    }
   }, [])
 
   const closeProject = useCallback(() => {

@@ -13,6 +13,7 @@ interface CodeEditorProps {
 export function CodeEditor({ relativePath }: CodeEditorProps) {
   const activeProject = useProjectStore((s) => s.activeProject)
   const [content, setContent] = useState<string>('')
+  const [loading, setLoading] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -26,12 +27,17 @@ export function CodeEditor({ relativePath }: CodeEditorProps) {
       return
     }
     let cancelled = false
+    setLoading(true)
     window.buildoto.project.readFile({ relativePath }).then((res) => {
       if (cancelled) return
       setContent(res.encoding === 'base64' ? '' : res.content)
       setEncoding(res.encoding)
       setDirty(false)
       setEditing(false)
+    }).catch(() => {
+      if (!cancelled) setContent('/* Erreur de lecture du fichier */')
+    }).finally(() => {
+      if (!cancelled) setLoading(false)
     })
     return () => {
       cancelled = true
@@ -48,6 +54,14 @@ export function CodeEditor({ relativePath }: CodeEditorProps) {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+        Chargement…
+      </div>
+    )
   }
 
   if (!relativePath) {

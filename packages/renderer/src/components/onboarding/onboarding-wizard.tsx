@@ -7,6 +7,7 @@ import { StepTour } from './step-tour'
 import { useGithubAuth } from '@/hooks/use-github-auth'
 import { useTelemetry } from '@/hooks/use-telemetry'
 import { useSettingsStore } from '@/stores/settings-store'
+import { cn } from '@/lib/utils'
 
 type Step = 1 | 2 | 3 | 4 | 5
 
@@ -105,7 +106,7 @@ function StepIndicator({ current }: { current: Step }) {
       {Array.from({ length: TOTAL }, (_, i) => i + 1).map((n) => (
         <span
           key={n}
-          className={`h-1.5 w-6 rounded-full ${n <= current ? 'bg-primary' : 'bg-muted'}`}
+          className={cn('h-1.5 w-6 rounded-full', n <= current ? 'bg-primary' : 'bg-muted')}
         />
       ))}
     </div>

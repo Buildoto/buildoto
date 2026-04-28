@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { History, Plus } from 'lucide-react'
+import { History, Plus, Trash2 } from 'lucide-react'
 import type { SessionSummary } from '@buildoto/shared'
 import { Button } from '@/components/ui/button'
 import {
@@ -91,26 +91,41 @@ export function SessionsToolbar() {
               </div>
             )}
             {sessions.map((s) => (
-              <button
+              <div
                 key={s.sessionId}
-                type="button"
-                onClick={() => void onPick(s.sessionId)}
-                disabled={busy}
                 className={cn(
-                  'w-full rounded-md border border-transparent px-3 py-2 text-left text-sm hover:border-border hover:bg-muted/40',
+                  'flex items-center gap-1 rounded-md border border-transparent px-3 py-2 hover:border-border hover:bg-muted/40',
                   s.sessionId === activeId && 'border-primary/40 bg-primary/5',
                 )}
               >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-medium">{s.title || 'Sans titre'}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatRelative(s.updatedAt)}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {s.messageCount} message{s.messageCount > 1 ? 's' : ''}
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void onPick(s.sessionId)}
+                  disabled={busy}
+                  className="min-w-0 flex-1 text-left text-sm"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-medium">{s.title || 'Sans titre'}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatRelative(s.updatedAt)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {s.messageCount} message{s.messageCount > 1 ? 's' : ''}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  title="Supprimer cette conversation"
+                  onClick={async () => {
+                    await window.buildoto.session.delete({ sessionId: s.sessionId })
+                    void refresh()
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         </DialogContent>

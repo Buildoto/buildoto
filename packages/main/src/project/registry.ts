@@ -12,11 +12,13 @@ import {
   appendMessage,
   appendTurn,
   createSession,
+  deleteSession,
   loadSession,
   saveSession,
   sessionFileAbsolutePath,
 } from './sessions'
 import { bumpRecent } from './recent'
+import { ERR_NO_ACTIVE_PROJECT, ERR_NO_ACTIVE_SESSION } from '../lib/constants'
 
 // Singleton holding the currently active project. Emits lifecycle events so
 // IPC handlers, the watcher, and the git module can react without polling.
@@ -80,13 +82,17 @@ class ProjectRegistry extends EventEmitter {
 
   async close(): Promise<void> {
     if (!this.current) return
-    await this.current.watcher.stop()
+    try {
+      await this.current.watcher.stop()
+    } catch (err) {
+      console.warn('[registry] watcher stop failed:', err)
+    }
     this.current = null
     this.emit('active-changed', null)
   }
 
   async setActiveSession(sessionId: string): Promise<SessionFile> {
-    if (!this.current) throw new Error('No active project')
+    if (!this.current) throw new Error(ERR_NO_ACTIVE_PROJECT)
     const session = await loadSession(this.current.project.path, sessionId)
     this.current.activeSession = session
     this.current.project = { ...this.current.project, activeSessionId: sessionId }
@@ -99,14 +105,14 @@ class ProjectRegistry extends EventEmitter {
   }
 
   async newSession(): Promise<SessionFile> {
-    if (!this.current) throw new Error('No active project')
+    if (!this.current) throw new Error(ERR_NO_ACTIVE_PROJECT)
     const session = await createSession(this.current.project.path)
     this.current.watcher.markSelfWrite(sessionFileAbsolutePath(this.current.project.path, session.sessionId))
     return this.setActiveSession(session.sessionId)
   }
 
   async appendToActiveSession(message: SessionMessage): Promise<SessionFile> {
-    if (!this.current || !this.current.activeSession) throw new Error('No active session')
+    if (!this.current || !this.current.activeSession) throw new Error(ERR_NO_ACTIVE_SESSION)
     const { project, activeSession } = this.current
     this.current.watcher.markSelfWrite(sessionFileAbsolutePath(project.path, activeSession.sessionId))
     const updated = await appendMessage(project.path, activeSession.sessionId, message)
@@ -132,6 +138,15 @@ class ProjectRegistry extends EventEmitter {
     )
     const updated = await appendTurn(project.path, activeSession.sessionId, turn)
     this.current.activeSession = updated
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    if (!this.current) throw new Error(ERR_NO_ACTIVE_PROJECT)
+    await deleteSession(this.current.project.path, sessionId)
+    // If we deleted the active session, create a new one.
+    if (this.current.activeSession?.sessionId === sessionId) {
+      await this.newSession()
+    }
   }
 
   markSelfWrite(absPath: string) {

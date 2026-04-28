@@ -34,22 +34,28 @@ export function FileTree({ onOpenFile }: FileTreeProps) {
         Explorateur
       </div>
       <div className="flex-1 overflow-hidden">
-        <Tree<TreeNode>
-          data={data}
-          openByDefault={false}
-          rowHeight={24}
-          indent={14}
-          disableEdit
-          disableDrag
-          disableDrop
-          width="100%"
-          height={600}
-          onActivate={(node) => {
-            if (!node.data.isDir && onOpenFile) onOpenFile(node.id)
-          }}
-        >
-          {Node}
-        </Tree>
+        {tree.length === 0 ? (
+          <div className="flex h-full items-center justify-center p-4 text-xs text-muted-foreground">
+            Dossier vide
+          </div>
+        ) : (
+          <Tree<TreeNode>
+            data={data}
+            openByDefault={false}
+            rowHeight={24}
+            indent={14}
+            disableEdit
+            disableDrag
+            disableDrop
+            width="100%"
+            height={600}
+            onActivate={(node) => {
+              if (!node.data.isDir && onOpenFile) onOpenFile(node.id)
+            }}
+          >
+            {Node}
+          </Tree>
+        )}
       </div>
     </div>
   )

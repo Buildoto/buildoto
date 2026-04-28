@@ -3,6 +3,7 @@ import { Check, ExternalLink, KeyRound, Server, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBuildotoAuth } from '@/hooks/use-buildoto-auth'
 import { BUILDOTO_PORTAL_URL } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 
 type Choice = 'buildoto-ai' | 'byom' | 'ollama'
 
@@ -176,11 +177,12 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full flex-col gap-2 rounded-lg border p-4 text-left transition-colors ${
+      className={cn(
+        'flex w-full flex-col gap-2 rounded-lg border p-4 text-left transition-colors',
         selected
           ? 'border-primary bg-primary/5'
-          : 'border-border bg-card hover:border-primary/40'
-      }`}
+          : 'border-border bg-card hover:border-primary/40',
+      )}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{icon}</div>

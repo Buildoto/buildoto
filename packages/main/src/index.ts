@@ -17,7 +17,15 @@ import { registerProjectHandlers } from './ipc/project.handler'
 import { registerSettingsHandlers } from './ipc/settings.handler'
 import { registerTelemetryHandlers } from './ipc/telemetry.handler'
 import { registerUpdaterHandlers } from './ipc/updater.handler'
-import { BUILDOTO_DEEP_LINK_SCHEME } from './lib/constants'
+import {
+  BUILDOTO_DEEP_LINK_SCHEME,
+  BUILDOTO_GITHUB_URL,
+  DEFAULT_WINDOW_WIDTH,
+  DEFAULT_WINDOW_HEIGHT,
+  DEV_RENDERER_URL,
+  MIN_WINDOW_WIDTH,
+  MIN_WINDOW_HEIGHT,
+} from './lib/constants'
 import { freecadSidecar } from './freecad/sidecar'
 import { mcpManager } from './mcp/manager'
 import { listRecentProjects } from './project/recent'
@@ -28,19 +36,19 @@ import { shutdownTelemetry } from './telemetry/posthog'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const IS_DEV = !app.isPackaged
-const DEV_URL = process.env['ELECTRON_RENDERER_URL'] ?? 'http://localhost:5173'
+const DEV_URL = process.env['ELECTRON_RENDERER_URL'] ?? DEV_RENDERER_URL
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): BrowserWindow {
   const bounds = store.get('windowBounds')
   const window = new BrowserWindow({
-    width: bounds?.width ?? 1280,
-    height: bounds?.height ?? 800,
+    width: bounds?.width ?? DEFAULT_WINDOW_WIDTH,
+    height: bounds?.height ?? DEFAULT_WINDOW_HEIGHT,
     x: bounds?.x,
     y: bounds?.y,
-    minWidth: 960,
-    minHeight: 600,
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
     title: 'Buildoto',
     show: false,
     backgroundColor: '#0b0c0f',
@@ -92,100 +100,111 @@ function buildRecentSubmenu(): Electron.MenuItemConstructorOptions[] {
   }))
 }
 
-function buildMenu() {
+function buildAppMenu(): Electron.MenuItemConstructorOptions[] {
+  return [
+    { role: 'about' as const },
+    { type: 'separator' as const },
+    {
+      label: 'Préférences…',
+      accelerator: 'CmdOrCtrl+,',
+      click: () => emitMenuAction({ kind: 'open-settings' }),
+    },
+    { type: 'separator' as const },
+    { role: 'services' as const },
+    { type: 'separator' as const },
+    { role: 'hide' as const },
+    { role: 'hideOthers' as const },
+    { role: 'unhide' as const },
+    { type: 'separator' as const },
+    { role: 'quit' as const },
+  ]
+}
+
+function buildFileMenu(): Electron.MenuItemConstructorOptions {
   const isMac = process.platform === 'darwin'
+  return {
+    label: 'File',
+    submenu: [
+      {
+        label: 'Nouveau projet…',
+        accelerator: 'CmdOrCtrl+N',
+        click: () => emitMenuAction({ kind: 'new-project' }),
+      },
+      {
+        label: 'Ouvrir un projet…',
+        accelerator: 'CmdOrCtrl+O',
+        click: () => emitMenuAction({ kind: 'open-project' }),
+      },
+      {
+        label: 'Ouvrir un projet récent',
+        submenu: buildRecentSubmenu(),
+      },
+      { type: 'separator' as const },
+      {
+        label: 'Fermer le projet',
+        accelerator: 'CmdOrCtrl+Shift+W',
+        click: () => {
+          void projectRegistry.close()
+          emitMenuAction({ kind: 'close-project' })
+        },
+      },
+      { type: 'separator' as const },
+      isMac ? { role: 'close' as const } : { role: 'quit' as const },
+    ],
+  }
+}
+
+function buildEditMenu(): Electron.MenuItemConstructorOptions {
+  return {
+    label: 'Edit',
+    submenu: [
+      { role: 'undo' as const },
+      { role: 'redo' as const },
+      { type: 'separator' as const },
+      { role: 'cut' as const },
+      { role: 'copy' as const },
+      { role: 'paste' as const },
+      { role: 'selectAll' as const },
+    ],
+  }
+}
+
+function buildViewMenu(): Electron.MenuItemConstructorOptions {
+  return {
+    label: 'View',
+    submenu: [
+      { role: 'reload' as const },
+      { role: 'forceReload' as const },
+      { role: 'toggleDevTools' as const },
+      { type: 'separator' as const },
+      { role: 'resetZoom' as const },
+      { role: 'zoomIn' as const },
+      { role: 'zoomOut' as const },
+      { type: 'separator' as const },
+      { role: 'togglefullscreen' as const },
+    ],
+  }
+}
+
+function buildHelpMenu(): Electron.MenuItemConstructorOptions {
+  return {
+    label: 'Help',
+    submenu: [
+      {
+        label: 'Buildoto on GitHub',
+        click: () => void shell.openExternal(BUILDOTO_GITHUB_URL),
+      },
+    ],
+  }
+}
+
+function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
-    ...(isMac
-      ? [
-          {
-            label: app.name,
-            submenu: [
-              { role: 'about' as const },
-              { type: 'separator' as const },
-              {
-                label: 'Préférences…',
-                accelerator: 'CmdOrCtrl+,',
-                click: () => emitMenuAction({ kind: 'open-settings' }),
-              },
-              { type: 'separator' as const },
-              { role: 'services' as const },
-              { type: 'separator' as const },
-              { role: 'hide' as const },
-              { role: 'hideOthers' as const },
-              { role: 'unhide' as const },
-              { type: 'separator' as const },
-              { role: 'quit' as const },
-            ],
-          },
-        ]
-      : []),
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Nouveau projet…',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => emitMenuAction({ kind: 'new-project' }),
-        },
-        {
-          label: 'Ouvrir un projet…',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => emitMenuAction({ kind: 'open-project' }),
-        },
-        {
-          label: 'Ouvrir un projet récent',
-          submenu: buildRecentSubmenu(),
-        },
-        { type: 'separator' as const },
-        {
-          label: 'Fermer le projet',
-          accelerator: 'CmdOrCtrl+Shift+W',
-          click: () => {
-            void projectRegistry.close()
-            emitMenuAction({ kind: 'close-project' })
-          },
-        },
-        { type: 'separator' as const },
-        isMac ? { role: 'close' as const } : { role: 'quit' as const },
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' as const },
-        { role: 'redo' as const },
-        { type: 'separator' as const },
-        { role: 'cut' as const },
-        { role: 'copy' as const },
-        { role: 'paste' as const },
-        { role: 'selectAll' as const },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' as const },
-        { role: 'forceReload' as const },
-        { role: 'toggleDevTools' as const },
-        { type: 'separator' as const },
-        { role: 'resetZoom' as const },
-        { role: 'zoomIn' as const },
-        { role: 'zoomOut' as const },
-        { type: 'separator' as const },
-        { role: 'togglefullscreen' as const },
-      ],
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Buildoto on GitHub',
-          click: () => {
-            void shell.openExternal('https://github.com/buildoto/buildoto')
-          },
-        },
-      ],
-    },
+    ...(process.platform === 'darwin' ? [{ label: app.name, submenu: buildAppMenu() }] : []),
+    buildFileMenu(),
+    buildEditMenu(),
+    buildViewMenu(),
+    buildHelpMenu(),
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
@@ -283,6 +302,10 @@ app.on('activate', () => {
     registerFreecadHandlers(mainWindow)
     registerProjectHandlers(mainWindow)
     registerGitHandlers(mainWindow)
+    registerMcpHandlers(mainWindow)
+    registerUpdaterHandlers(mainWindow)
+    registerBuildotoAuthHandlers(mainWindow)
+    registerBuildotoUsageHandlers(mainWindow)
   }
 })
 

@@ -6,6 +6,7 @@ import type {
   ProviderId,
   SessionMessage,
 } from '@buildoto/shared'
+import { DEFAULT_PROVIDER_ID } from '@buildoto/shared'
 
 export type ChatMessage =
   | { id: string; role: 'user'; text: string }
@@ -34,6 +35,7 @@ interface SessionState {
   setMessages: (messages: ChatMessage[]) => void
   appendMessage: (message: ChatMessage) => void
   updateLastAssistantText: (text: string) => void
+  setLastAssistantText: (text: string) => void
   setRunning: (running: boolean) => void
   setGltf: (base64: string) => void
   setFreecadStatus: (status: FreecadSidecarStatus) => void
@@ -49,7 +51,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   gltfBase64: null,
   freecadStatus: { state: 'booting' },
   mode: 'build',
-  providerId: 'anthropic',
+  providerId: DEFAULT_PROVIDER_ID,
   model: null,
   sourcesByMessageId: {},
 
@@ -63,6 +65,19 @@ export const useSessionStore = create<SessionState>((set) => ({
         const updated = [...s.messages]
         updated[updated.length - 1] = { ...last, text: last.text + text }
         return { messages: updated }
+      }
+      const id = `a-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      return { messages: [...s.messages, { id, role: 'assistant', text }] }
+    }),
+  setLastAssistantText: (text) =>
+    set((s) => {
+      for (let i = s.messages.length - 1; i >= 0; i--) {
+        const m = s.messages[i]
+        if (m && m.role === 'assistant') {
+          const updated = [...s.messages]
+          updated[i] = { ...m, text }
+          return { messages: updated }
+        }
       }
       const id = `a-${Date.now()}-${Math.random().toString(36).slice(2)}`
       return { messages: [...s.messages, { id, role: 'assistant', text }] }

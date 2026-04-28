@@ -13,7 +13,7 @@ import {
   type GitStatus,
   type Project,
 } from '@buildoto/shared'
-import { GIT_STATUS_DEBOUNCE_MS } from '../lib/constants'
+import { ERR_NO_ACTIVE_PROJECT, GIT_STATUS_DEBOUNCE_MS } from '../lib/constants'
 import { GitRepo } from '../git/repo'
 import { projectRegistry } from '../project/registry'
 
@@ -23,7 +23,7 @@ let statusTimer: NodeJS.Timeout | null = null
 
 function withRepo(): GitRepo {
   const project = projectRegistry.get()
-  if (!project) throw new Error('No active project')
+  if (!project) throw new Error(ERR_NO_ACTIVE_PROJECT)
   if (!currentRepo || currentRepo.path !== project.path) {
     currentRepo = new GitRepo(project.path)
   }
@@ -66,6 +66,16 @@ export function registerGitHandlers(window: BrowserWindow) {
     void broadcastStatus(window)
     return result
   })
+  ipcMain.handle(IpcChannels.GIT_FETCH, async (): Promise<void> => {
+    await withRepo().fetch()
+    void broadcastStatus(window)
+  })
+
+  ipcMain.handle(IpcChannels.GIT_ABORT_MERGE, async (): Promise<void> => {
+    await withRepo().abortMerge()
+    void broadcastStatus(window)
+  })
+
   ipcMain.handle(IpcChannels.GIT_CHECKOUT, async (_e, req: GitCheckoutRequest): Promise<void> => {
     await withRepo().checkout(req.branch, req.create ?? false)
     void broadcastStatus(window)

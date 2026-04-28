@@ -18,6 +18,7 @@ import {
   type SessionSetActiveRequest,
   type SessionSummary,
 } from '@buildoto/shared'
+import { ERR_NO_ACTIVE_PROJECT } from '../lib/constants'
 import {
   cloneProject,
   createProject,
@@ -92,7 +93,7 @@ export function registerProjectHandlers(window: BrowserWindow) {
     IpcChannels.PROJECT_READ_FILE,
     async (_e, req: ProjectReadFileRequest): Promise<ProjectReadFileResult> => {
       const project = projectRegistry.get()
-      if (!project) throw new Error('No active project')
+      if (!project) throw new Error(ERR_NO_ACTIVE_PROJECT)
       return readProjectFile(project.path, req.relativePath)
     },
   )
@@ -101,7 +102,7 @@ export function registerProjectHandlers(window: BrowserWindow) {
     IpcChannels.PROJECT_WRITE_FILE,
     async (_e, req: ProjectWriteFileRequest): Promise<void> => {
       const project = projectRegistry.get()
-      if (!project) throw new Error('No active project')
+      if (!project) throw new Error(ERR_NO_ACTIVE_PROJECT)
       const abs = await pathForWrite(project.path, req.relativePath)
       projectRegistry.markSelfWrite(abs)
       await writeProjectFile(project.path, req.relativePath, req.content, req.encoding ?? 'utf-8')
@@ -119,7 +120,7 @@ export function registerProjectHandlers(window: BrowserWindow) {
     IpcChannels.SESSION_LOAD,
     async (_e, req: SessionLoadRequest): Promise<SessionFile> => {
       const project = projectRegistry.get()
-      if (!project) throw new Error('No active project')
+      if (!project) throw new Error(ERR_NO_ACTIVE_PROJECT)
       const { loadSession } = await import('../project/sessions')
       return loadSession(project.path, req.sessionId)
     },
@@ -143,6 +144,13 @@ export function registerProjectHandlers(window: BrowserWindow) {
     IpcChannels.SESSION_SET_ACTIVE,
     async (_e, req: SessionSetActiveRequest): Promise<void> => {
       await projectRegistry.setActiveSession(req.sessionId)
+    },
+  )
+
+  ipcMain.handle(
+    IpcChannels.SESSION_DELETE,
+    async (_e, req: SessionLoadRequest): Promise<void> => {
+      await projectRegistry.deleteSession(req.sessionId)
     },
   )
 }

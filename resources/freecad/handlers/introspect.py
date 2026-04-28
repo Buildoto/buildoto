@@ -103,14 +103,16 @@ def export_gltf(payload, doc):
         empty = b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
         return {"ok": True, "data_base64": base64.b64encode(empty).decode("ascii"), "bytes": len(empty)}
     tmp = os.path.join(FreeCAD.ConfigGet("UserAppData") or "/tmp", f"buildoto-tool-export-{int(time.time() * 1000)}.glb")
-    Import.export(objects, tmp)
-    with open(tmp, "rb") as fh:
-        data = fh.read()
     try:
-        os.remove(tmp)
-    except OSError:
-        pass
-    return {"ok": True, "data_base64": base64.b64encode(data).decode("ascii"), "bytes": len(data)}
+        Import.export(objects, tmp)
+        with open(tmp, "rb") as fh:
+            data = fh.read()
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    return {"ok": True, "data": base64.b64encode(data).decode("ascii"), "bytes": len(data)}
 
 
 def export_ifc(payload, doc):
@@ -128,15 +130,11 @@ def export_ifc(payload, doc):
     return {"ok": True, "file_path": path, "bytes": bytes_}
 
 
-def screenshot(payload, doc):
-    raise NotImplementedError("screenshot requires a GUI build of FreeCAD; not supported in freecadcmd")
-
-
 TOOLS = {
     "list_documents": list_documents,
     "get_objects": get_objects,
     "get_object_properties": get_object_properties,
     "export_gltf": export_gltf,
     "export_ifc": export_ifc,
-    "screenshot": screenshot,
+    # screenshot omitted — requires GUI FreeCAD, freecadcmd is headless.
 }

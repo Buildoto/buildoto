@@ -14,6 +14,8 @@ export const PROVIDER_IDS = [
 
 export type ProviderId = (typeof PROVIDER_IDS)[number]
 
+export const DEFAULT_PROVIDER_ID: ProviderId = 'anthropic'
+
 export type AgentMode = 'build' | 'plan'
 
 export interface ProviderStatusEntry {

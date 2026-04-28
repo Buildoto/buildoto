@@ -37,6 +37,7 @@ export function defineTool<TSchema extends z.ZodTypeAny, TResult>(
 export interface ToolRegistry {
   register(tool: ToolDefinition): void
   registerMany(tools: readonly ToolDefinition[]): void
+  unregister(id: string): void
   get(id: string): ToolDefinition | undefined
   list(): readonly ToolDefinition[]
   listIds(): readonly string[]
@@ -71,6 +72,9 @@ export function createToolRegistry(): ToolRegistry {
     },
     registerMany(defs) {
       for (const def of defs) this.register(def)
+    },
+    unregister(id) {
+      tools.delete(id)
     },
     get(id) {
       return tools.get(id)

@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
@@ -68,8 +68,21 @@ export async function listSessions(projectPath: string): Promise<SessionSummary[
 }
 
 export async function loadSession(projectPath: string, sessionId: string): Promise<SessionFile> {
-  const raw = await readFile(sessionPath(projectPath, sessionId), 'utf8')
-  const parsed = JSON.parse(raw) as AnySessionFile
+  let raw: string
+  try {
+    raw = await readFile(sessionPath(projectPath, sessionId), 'utf8')
+  } catch {
+    // File not found or unreadable — returns a fresh session.
+    return createSession(projectPath)
+  }
+  let parsed: AnySessionFile
+  try {
+    parsed = JSON.parse(raw) as AnySessionFile
+  } catch {
+    // Corrupt JSON — create a fresh session instead of crashing.
+    console.warn('[sessions] corrupt session file, creating new:', sessionId)
+    return createSession(projectPath)
+  }
   if (parsed.schemaVersion === 2) return parsed
   if (parsed.schemaVersion === 1) {
     const migrated = migrateSessionV1toV2(parsed)
@@ -77,7 +90,7 @@ export async function loadSession(projectPath: string, sessionId: string): Promi
     return migrated
   }
   throw new Error(
-    `Unsupported session schemaVersion: ${(parsed as { schemaVersion?: unknown }).schemaVersion}`,
+    `Version du schéma de session non supportée : ${(parsed as { schemaVersion?: unknown }).schemaVersion}`,
   )
 }
 
@@ -130,4 +143,11 @@ export async function appendTurn(
 
 export function sessionFileAbsolutePath(projectPath: string, sessionId: string): string {
   return sessionPath(projectPath, sessionId)
+}
+
+export async function deleteSession(projectPath: string, sessionId: string): Promise<void> {
+  const filePath = sessionPath(projectPath, sessionId)
+  if (existsSync(filePath)) {
+    await unlink(filePath)
+  }
 }

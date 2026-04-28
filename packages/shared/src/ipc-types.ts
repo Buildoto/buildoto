@@ -70,6 +70,7 @@ export const IpcChannels = {
   SESSION_LOAD: 'session:load',
   SESSION_NEW: 'session:new',
   SESSION_SET_ACTIVE: 'session:set-active',
+  SESSION_DELETE: 'session:delete',
   SESSION_ACTIVE_CHANGED: 'session:active-changed',
 
   // Git (sprint 2)
@@ -82,6 +83,8 @@ export const IpcChannels = {
   GIT_CREATE_BRANCH: 'git:create-branch',
   GIT_LIST_BRANCHES: 'git:list-branches',
   GIT_DIFF: 'git:diff',
+  GIT_FETCH: 'git:fetch',
+  GIT_ABORT_MERGE: 'git:abort-merge',
   GIT_STATUS_CHANGED: 'git:status-changed',
 
   // Menu actions (sprint 2)
@@ -124,9 +127,6 @@ export const IpcChannels = {
   BUILDOTO_AUTH_SIGN_OUT: 'buildoto-auth:sign-out',
   BUILDOTO_AUTH_GET_STATUS: 'buildoto-auth:get-status',
   BUILDOTO_AUTH_STATUS_CHANGED: 'buildoto-auth:status-changed',
-
-  // RAG sources (sprint 8) — main → renderer, emitted per assistant turn
-  BUILDOTO_AI_SOURCES: 'buildoto-ai:sources',
 
   // Usage (sprint 8) — quota snapshot driven by X-Quota-* response headers
   BUILDOTO_USAGE_GET: 'buildoto-usage:get',
@@ -177,6 +177,7 @@ export type AgentEvent =
   | { type: 'provider_changed'; providerId: ProviderId; model: string }
   | { type: 'sources'; sources: BuildotoRagSource[] }
   | { type: 'done'; stopReason: string }
+  | { type: 'canceled' }
   | { type: 'error'; message: string }
 
 // ── Settings ────────────────────────────────────────────────────────────────
@@ -387,11 +388,6 @@ export interface BuildotoRagSource {
   excerpt: string
 }
 
-export interface BuildotoAiSourcesEvent {
-  messageId: string
-  sources: BuildotoRagSource[]
-}
-
 // ── Buildoto AI usage snapshot (sprint 8) ───────────────────────────────────
 
 export interface BuildotoUsageSnapshot {
@@ -471,6 +467,7 @@ export interface BuildotoApi {
     load: (req: SessionLoadRequest) => Promise<SessionFile>
     new: () => Promise<SessionNewResult>
     setActive: (req: SessionSetActiveRequest) => Promise<void>
+    delete: (req: SessionLoadRequest) => Promise<void>
     onActiveChanged: (handler: (payload: SessionActiveChanged) => void) => () => void
   }
   git: {
@@ -483,6 +480,8 @@ export interface BuildotoApi {
     createBranch: (req: GitCreateBranchRequest) => Promise<void>
     listBranches: () => Promise<string[]>
     diff: (req?: GitDiffRequest) => Promise<string>
+    fetch: () => Promise<void>
+    abortMerge: () => Promise<void>
     onStatusChanged: (handler: (status: GitStatus) => void) => () => void
   }
   github: {
@@ -525,7 +524,6 @@ export interface BuildotoApi {
     signOut: () => Promise<void>
     getStatus: () => Promise<BuildotoAuthState>
     onStatusChanged: (handler: (state: BuildotoAuthState) => void) => () => void
-    onSources: (handler: (event: BuildotoAiSourcesEvent) => void) => () => void
   }
   buildotoUsage: {
     get: () => Promise<BuildotoUsageSnapshot>

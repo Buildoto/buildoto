@@ -13,8 +13,10 @@ interface PostHogLike {
   shutdown: (timeoutMs?: number) => Promise<void>
 }
 
+import { POSTHOG_DEFAULT_HOST, POSTHOG_FLUSH_AT, POSTHOG_FLUSH_INTERVAL } from '../lib/constants'
+
 const POSTHOG_KEY = process.env['POSTHOG_KEY'] ?? ''
-const POSTHOG_HOST = process.env['POSTHOG_HOST'] ?? 'https://eu.i.posthog.com'
+const POSTHOG_HOST = process.env['POSTHOG_HOST'] ?? POSTHOG_DEFAULT_HOST
 
 let client: PostHogLike | null = null
 let initialized = false
@@ -32,8 +34,8 @@ async function ensureClient(): Promise<PostHogLike | null> {
     }
     client = new mod.PostHog(POSTHOG_KEY, {
       host: POSTHOG_HOST,
-      flushAt: 20,
-      flushInterval: 10_000,
+      flushAt: POSTHOG_FLUSH_AT,
+      flushInterval: POSTHOG_FLUSH_INTERVAL,
     })
     return client
   } catch (err) {

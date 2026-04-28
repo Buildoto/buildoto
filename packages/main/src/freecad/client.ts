@@ -1,6 +1,17 @@
 import { randomUUID } from 'node:crypto'
+import { Buffer } from 'node:buffer'
 import { DEFAULT_EXEC_TIMEOUT_MS, type FreecadResponse } from '@buildoto/shared'
 import { freecadSidecar } from './sidecar'
+
+let _viewportCb: ((base64: string, bytes: number) => void) | null = null
+
+export function setViewportUpdateCallback(cb: ((base64: string, bytes: number) => void) | null): void {
+  _viewportCb = cb
+}
+
+export function getViewportUpdateCallback(): ((base64: string, bytes: number) => void) | null {
+  return _viewportCb
+}
 
 function nextId(): string {
   return randomUUID()
@@ -16,7 +27,7 @@ function expect<T extends FreecadResponse['type']>(
     ;(err as Error & { code?: string; traceback?: string }).traceback = res.traceback
     throw err
   }
-  if (res.type !== type) throw new Error(`Unexpected FreeCAD response type: expected ${type}, got ${res.type}`)
+  if (res.type !== type) throw new Error(`Type de réponse FreeCAD inattendu : attendu ${type}, reçu ${res.type}`)
   return res as Extract<FreecadResponse, { type: T }>
 }
 
@@ -43,10 +54,14 @@ export async function resetDocument(): Promise<void> {
   expect(res, 'result')
 }
 
-export async function ping(): Promise<void> {
-  const res = await freecadSidecar.request({ id: nextId(), type: 'ping' }, 3_000)
-  expect(res, 'pong')
-}
+const READONLY_TOOL_IDS = new Set([
+  'list_documents',
+  'get_objects',
+  'get_object_properties',
+  'export_gltf',
+  'export_ifc',
+  'screenshot',
+])
 
 export async function toolInvoke<T = unknown>(
   toolId: string,
@@ -58,5 +73,14 @@ export async function toolInvoke<T = unknown>(
     timeoutMs,
   )
   const ok = expect(res, 'tool_result')
+  // Fire-and-forget viewport refresh after modification tools complete.
+  if (_viewportCb && !READONLY_TOOL_IDS.has(toolId)) {
+    exportGltf()
+      .then((base64) => {
+        const bytes = Buffer.byteLength(base64, 'base64')
+        _viewportCb!(base64, bytes)
+      })
+      .catch(() => { /* best-effort — viewport stays stale */ })
+  }
   return ok.data as T
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { defineTool, type ToolDefinition } from '@buildoto/opencode-core/tool'
+import type { ToolDefinition } from '@buildoto/opencode-core/tool'
+import { defineFreecadTool } from './registry'
 import { toolInvoke } from '../freecad/client'
 
 const POINT3 = z.tuple([z.number(), z.number(), z.number()])
@@ -21,7 +22,7 @@ const dimensionSchema = z.object({
 })
 
 export const draftTools: ToolDefinition[] = [
-  defineTool({
+  defineFreecadTool({
     id: 'draft_line',
     description: 'Create a 2D Draft line between two 3D points (millimetres).',
     provenance: 'freecad',
@@ -30,8 +31,8 @@ export const draftTools: ToolDefinition[] = [
       const data = await toolInvoke('draft_line', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'draft_polygon',
     description:
       'Create a Draft polyline / polygon from a list of vertices. Pass closed=true (default) to close the loop.',
@@ -41,8 +42,8 @@ export const draftTools: ToolDefinition[] = [
       const data = await toolInvoke('draft_polygon', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'draft_dimension',
     description: 'Create a linear Draft dimension between two points with an optional label.',
     provenance: 'freecad',
@@ -51,5 +52,5 @@ export const draftTools: ToolDefinition[] = [
       const data = await toolInvoke('draft_dimension', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
+  }),
 ]

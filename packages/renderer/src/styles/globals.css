@@ -14,6 +14,24 @@
   --radius: 0.5rem;
 }
 
+:root:not(.dark) {
+  --color-background: #f5f5f7;
+  --color-foreground: #1d1d1f;
+  --color-muted: #e8e8ed;
+  --color-muted-foreground: #86868b;
+  --color-border: #d2d2d7;
+  --color-input: #e8e8ed;
+  --color-primary: #5b9dff;
+  --color-primary-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {

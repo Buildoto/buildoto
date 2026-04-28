@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { defineTool, type ToolDefinition } from '@buildoto/opencode-core/tool'
+import type { ToolDefinition } from '@buildoto/opencode-core/tool'
+import { defineFreecadTool } from './registry'
 import { toolInvoke } from '../freecad/client'
 
 const PLANE = z.enum(['XY', 'XZ', 'YZ']).describe('Sketch plane')
@@ -25,7 +26,7 @@ const closeSchema = z.object({
 })
 
 export const sketcherTools: ToolDefinition[] = [
-  defineTool({
+  defineFreecadTool({
     id: 'sketcher_create_rectangle',
     description:
       'Create a closed rectangular sketch on the requested plane (XY, XZ, YZ). Returns sketch object_id usable by part_extrude.',
@@ -35,8 +36,8 @@ export const sketcherTools: ToolDefinition[] = [
       const data = await toolInvoke('sketcher_create_rectangle', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'sketcher_create_circle',
     description:
       'Create a circular sketch on the requested plane. Returns sketch object_id usable by part_extrude.',
@@ -46,8 +47,8 @@ export const sketcherTools: ToolDefinition[] = [
       const data = await toolInvoke('sketcher_create_circle', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
-  defineTool({
+  }),
+  defineFreecadTool({
     id: 'sketcher_close_sketch',
     description: 'Close a sketch (commit pending edits) so it can be consumed by other tools.',
     provenance: 'freecad',
@@ -56,5 +57,5 @@ export const sketcherTools: ToolDefinition[] = [
       const data = await toolInvoke('sketcher_close_sketch', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
+  }),
 ]

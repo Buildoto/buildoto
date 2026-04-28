@@ -9,7 +9,6 @@ import {
   type AgentState,
   type AppMetadata,
   type AppSettings,
-  type BuildotoAiSourcesEvent,
   type BuildotoApi,
   type BuildotoAuthState,
   type BuildotoUsageSnapshot,
@@ -153,6 +152,8 @@ const api: BuildotoApi = {
     new: () => ipcRenderer.invoke(IpcChannels.SESSION_NEW) as Promise<SessionNewResult>,
     setActive: (req: SessionSetActiveRequest) =>
       ipcRenderer.invoke(IpcChannels.SESSION_SET_ACTIVE, req) as Promise<void>,
+    delete: (req: SessionLoadRequest) =>
+      ipcRenderer.invoke(IpcChannels.SESSION_DELETE, req) as Promise<void>,
     onActiveChanged: (handler) =>
       subscribe<SessionActiveChanged>(IpcChannels.SESSION_ACTIVE_CHANGED, handler),
   },
@@ -171,6 +172,10 @@ const api: BuildotoApi = {
       ipcRenderer.invoke(IpcChannels.GIT_LIST_BRANCHES) as Promise<string[]>,
     diff: (req?: GitDiffRequest) =>
       ipcRenderer.invoke(IpcChannels.GIT_DIFF, req ?? {}) as Promise<string>,
+    fetch: () =>
+      ipcRenderer.invoke(IpcChannels.GIT_FETCH) as Promise<void>,
+    abortMerge: () =>
+      ipcRenderer.invoke(IpcChannels.GIT_ABORT_MERGE) as Promise<void>,
     onStatusChanged: (handler) =>
       subscribe<GitStatus>(IpcChannels.GIT_STATUS_CHANGED, handler),
   },
@@ -243,8 +248,6 @@ const api: BuildotoApi = {
       ipcRenderer.invoke(IpcChannels.BUILDOTO_AUTH_GET_STATUS) as Promise<BuildotoAuthState>,
     onStatusChanged: (handler) =>
       subscribe<BuildotoAuthState>(IpcChannels.BUILDOTO_AUTH_STATUS_CHANGED, handler),
-    onSources: (handler) =>
-      subscribe<BuildotoAiSourcesEvent>(IpcChannels.BUILDOTO_AI_SOURCES, handler),
   },
   buildotoUsage: {
     get: () =>

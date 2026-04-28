@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { defineTool, type ToolDefinition } from '@buildoto/opencode-core/tool'
+import type { ToolDefinition } from '@buildoto/opencode-core/tool'
+import { defineFreecadTool } from './registry'
 import { toolInvoke } from '../freecad/client'
 
 const writeSchema = z.object({
@@ -10,7 +11,7 @@ const writeSchema = z.object({
 })
 
 export const spreadsheetTools: ToolDefinition[] = [
-  defineTool({
+  defineFreecadTool({
     id: 'spreadsheet_write',
     description:
       'Create or update a Spreadsheet sheet (default name "Spreadsheet") with a map of cell references to values or formulas.',
@@ -20,5 +21,5 @@ export const spreadsheetTools: ToolDefinition[] = [
       const data = await toolInvoke('spreadsheet_write', input)
       return JSON.stringify(data)
     },
-  }) as unknown as ToolDefinition,
+  }),
 ]

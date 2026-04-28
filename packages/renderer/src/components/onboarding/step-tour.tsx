@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface StepTourProps {
   onDone: () => void
@@ -65,7 +66,7 @@ export function StepTour({ onDone }: StepTourProps) {
           {SLIDES.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 w-6 rounded-full ${i <= index ? 'bg-primary' : 'bg-muted'}`}
+              className={cn('h-1.5 w-6 rounded-full', i <= index ? 'bg-primary' : 'bg-muted')}
             />
           ))}
         </div>

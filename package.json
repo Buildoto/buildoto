@@ -29,14 +29,15 @@
     "lint": "eslint .",
     "type-check": "pnpm -r run type-check",
     "postinstall": "tsx scripts/postinstall.ts",
+    "icons": "tsx scripts/generate-icons.ts",
     "smoke": "tsx --env-file=.env.local packages/main/src/__smoke__/cube.ts",
     "smoke:project": "tsx --env-file=.env.local packages/main/src/__smoke__/project.ts",
     "smoke:agent": "tsx --env-file=.env.local packages/main/src/__smoke__/agent-multiprovider.ts",
-    "package": "pnpm build && electron-builder",
-    "package:mac-arm64": "tsx scripts/postinstall.ts --target=darwin-arm64 && pnpm build && electron-builder --mac --arm64",
-    "package:mac-x64": "tsx scripts/postinstall.ts --target=darwin-x64 && pnpm build && electron-builder --mac --x64",
-    "package:linux": "tsx scripts/postinstall.ts --target=linux-x64 && pnpm build && electron-builder --linux",
-    "package:win": "tsx scripts/postinstall.ts --target=win32-x64 && pnpm build && electron-builder --win"
+    "package": "pnpm icons && pnpm build && electron-builder",
+    "package:mac-arm64": "tsx scripts/postinstall.ts --target=darwin-arm64 && pnpm icons && pnpm build && electron-builder --mac --arm64",
+    "package:mac-x64": "tsx scripts/postinstall.ts --target=darwin-x64 && pnpm icons && pnpm build && electron-builder --mac --x64",
+    "package:linux": "tsx scripts/postinstall.ts --target=linux-x64 && pnpm icons && pnpm build && electron-builder --linux",
+    "package:win": "tsx scripts/postinstall.ts --target=win32-x64 && pnpm icons && pnpm build && electron-builder --win"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",

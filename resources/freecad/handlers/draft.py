@@ -43,7 +43,15 @@ def draft_polygon(payload, doc):
 
 
 def draft_dimension(payload, doc):
-    raise NotImplementedError("draft_dimension is planned for sprint 4")
+    _require_draft()
+    from_pt = _vec(payload["from"])
+    to_pt = _vec(payload["to"])
+    label = payload.get("label", "")
+    dim = Draft.makeDimension(from_pt, to_pt)
+    if label:
+        dim.Label = label
+    doc.recompute()
+    return {"ok": True, "object_id": dim.Name, "label": dim.Label}
 
 
 TOOLS = {
