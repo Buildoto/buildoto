@@ -73,14 +73,19 @@ export async function toolInvoke<T = unknown>(
     timeoutMs,
   )
   const ok = expect(res, 'tool_result')
-  // Fire-and-forget viewport refresh after modification tools complete.
+  // After every modification tool, export glTF so the viewport updates.
+  // We don't await — the tool result must flow back to the agent immediately.
+  // The export runs on the sidecar's queue; it will be processed after the
+  // tool_invoke response is fully sent.
   if (_viewportCb && !READONLY_TOOL_IDS.has(toolId)) {
     exportGltf()
       .then((base64) => {
         const bytes = Buffer.byteLength(base64, 'base64')
         _viewportCb!(base64, bytes)
       })
-      .catch(() => { /* best-effort — viewport stays stale */ })
+      .catch((err) => {
+        console.warn('[client] viewport export failed for', toolId, err)
+      })
   }
   return ok.data as T
 }

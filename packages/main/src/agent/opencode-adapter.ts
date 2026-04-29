@@ -26,7 +26,7 @@ import { buildotoUsage } from '../auth/usage'
 import { BUILDOTO_AI_URL, MAX_HISTORY_TURNS } from '../lib/constants'
 import { getApiKey, getProviderModel } from '../store/settings'
 import { mcpManager } from '../mcp/manager'
-import { setViewportUpdateCallback } from '../freecad/client'
+import { exportGltf, setViewportUpdateCallback } from '../freecad/client'
 import { STRUCTURED_FREECAD_TOOLS } from '../tools/registry'
 import {
   createLegacyFreecadTool,
@@ -210,6 +210,19 @@ class OpenCodeAdapter {
           provider: this.state.providerId,
         })
       }
+      // Final viewport refresh: export the document state after the turn ends
+      // so the 3D view always reflects the latest geometry.
+      if (args.onViewportUpdate) {
+        exportGltf()
+          .then((gltfBase64) => {
+            const bytes = Math.floor((gltfBase64.length * 3) / 4)
+            args.onViewportUpdate!(gltfBase64, bytes)
+          })
+          .catch(() => {
+            /* best-effort final export */
+          })
+      }
+
       args.onEvent({ type: 'done', stopReason })
 
       return {

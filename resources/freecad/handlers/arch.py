@@ -28,6 +28,18 @@ def _vec(pos, default=(0, 0, 0)):
     return FreeCAD.Vector(*v)
 
 
+def _resolve(doc, obj_id):
+    """Resolve an object ID, trying direct lookup first, then case-insensitive."""
+    obj = doc.getObject(obj_id)
+    if obj is not None:
+        return obj
+    # Case-insensitive fallback — LLMs often lowercase FreeCAD's capitalized Names.
+    for o in doc.Objects:
+        if o.Name.lower() == obj_id.lower() or o.Label.lower() == obj_id.lower():
+            return o
+    return None
+
+
 def _require_arch():
     if Arch is None:
         raise RuntimeError("Arch workbench unavailable in this FreeCAD build")
@@ -88,7 +100,7 @@ def arch_create_window(payload, doc):
     height = float(payload["height_mm"])
     sill = float(payload["sill_height_mm"])
     offset = float(payload["offset_along_wall_mm"])
-    host = doc.getObject(host_id)
+    host = _resolve(doc, host_id)
     if host is None:
         raise LookupError(f"unknown host wall: {host_id}")
     window = Arch.makeWindow(host, width=width, height=height)
@@ -114,7 +126,7 @@ def arch_create_door(payload, doc):
     width = float(payload["width_mm"])
     height = float(payload["height_mm"])
     offset = float(payload["offset_along_wall_mm"])
-    host = doc.getObject(host_id)
+    host = _resolve(doc, host_id)
     if host is None:
         raise LookupError(f"unknown host wall: {host_id}")
     door = Arch.makeWindow(host, width=width, height=height)
@@ -140,7 +152,7 @@ def arch_create_roof(payload, doc):
     base_id = payload["base_object_id"]
     angle = float(payload["angle_deg"])
     thickness = float(payload["thickness_mm"])
-    base = doc.getObject(base_id)
+    base = _resolve(doc, base_id)
     if base is None:
         raise LookupError(f"unknown base: {base_id}")
     roof = Arch.makeRoof(base, angle=angle, thickness=thickness)
