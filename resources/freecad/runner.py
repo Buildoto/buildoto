@@ -135,6 +135,15 @@ def _handle(msg: dict) -> dict:
         if mtype == "tool_invoke":
             doc = _get_or_create_doc()
             data = handlers.dispatch(msg["tool_id"], msg.get("payload") or {}, doc)
+            doc.recompute()
+            # Auto-export glTF so the TypeScript side gets viewport data
+            # without needing a second round-trip. Read-only tools (introspection)
+            # set a flag so we don't export if not needed.
+            if not data.get("_readonly"):
+                gltf = _export_gltf(None)
+                if "error" not in gltf:
+                    data["_viewport_gltf"] = gltf["data"]
+                    data["_viewport_bytes"] = gltf["bytes"]
             return {"id": mid, "type": "tool_result", "data": data}
         if mtype == "reset_document":
             _reset_doc()

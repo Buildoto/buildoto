@@ -87,5 +87,14 @@ export async function toolInvoke<T = unknown>(
         console.warn('[client] viewport export failed for', toolId, err)
       })
   }
-  return ok.data as T
+  // The Python runner now includes `_viewport_gltf` and `_viewport_bytes` in
+  // every tool_invoke response (for non-readonly tools). Extract them and
+  // forward to the viewport callback synchronously — no separate round-trip.
+  const responseData = ok.data as Record<string, unknown>
+  if (_viewportCb && responseData?.['_viewport_gltf']) {
+    const gltfBase64 = String(responseData['_viewport_gltf'])
+    const bytes = Number(responseData['_viewport_bytes'] ?? 0)
+    _viewportCb(gltfBase64, bytes || Math.floor((gltfBase64.length * 3) / 4))
+  }
+  return responseData as T
 }

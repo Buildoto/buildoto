@@ -27,6 +27,10 @@ def _resolve_doc(doc, document_id=None):
     return doc
 
 
+def _readonly():
+    return {"_readonly": True}
+
+
 def list_documents(payload, doc):
     out = []
     for d in _all_docs():
@@ -35,7 +39,7 @@ def list_documents(payload, doc):
             "label": d.Label,
             "object_count": len(d.Objects),
         })
-    return {"ok": True, "documents": out}
+    return {**{"ok": True, "documents": out}, **_readonly()}
 
 
 def get_objects(payload, doc):
@@ -52,7 +56,7 @@ def get_objects(payload, doc):
         except Exception:
             item["visible"] = True
         out.append(item)
-    return {"ok": True, "objects": out}
+    return {**{"ok": True, "objects": out}, **_readonly()}
 
 
 def get_object_properties(payload, doc):
@@ -68,13 +72,13 @@ def get_object_properties(payload, doc):
             props[name] = _serialise_property(value)
         except Exception as exc:
             props[name] = {"_error": str(exc)}
-    return {
+    return {**{
         "ok": True,
         "object_id": obj.Name,
         "label": obj.Label,
         "type": obj.TypeId,
         "properties": props,
-    }
+    }, **_readonly()}
 
 
 def _serialise_property(value):
@@ -101,7 +105,7 @@ def export_gltf(payload, doc):
     objects = [o for o in target.Objects if hasattr(o, "Shape")]
     if not objects:
         empty = b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
-        return {"ok": True, "data_base64": base64.b64encode(empty).decode("ascii"), "bytes": len(empty)}
+        return {**{"ok": True, "data_base64": base64.b64encode(empty).decode("ascii"), "bytes": len(empty)}, **_readonly()}
     tmp = os.path.join(FreeCAD.ConfigGet("UserAppData") or "/tmp", f"buildoto-tool-export-{int(time.time() * 1000)}.glb")
     try:
         Import.export(objects, tmp)
@@ -112,7 +116,7 @@ def export_gltf(payload, doc):
             os.remove(tmp)
         except OSError:
             pass
-    return {"ok": True, "data": base64.b64encode(data).decode("ascii"), "bytes": len(data)}
+    return {**{"ok": True, "data": base64.b64encode(data).decode("ascii"), "bytes": len(data)}, **_readonly()}
 
 
 def export_ifc(payload, doc):
@@ -127,7 +131,7 @@ def export_ifc(payload, doc):
         raise RuntimeError(f"IFC export unavailable: {exc}")
     exportIFC.export(target.Objects, path)
     bytes_ = os.path.getsize(path) if os.path.exists(path) else 0
-    return {"ok": True, "file_path": path, "bytes": bytes_}
+    return {**{"ok": True, "file_path": path, "bytes": bytes_}, **_readonly()}
 
 
 TOOLS = {
