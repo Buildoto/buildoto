@@ -103,12 +103,12 @@ export function registerAgentHandlers(window: BrowserWindow) {
       if (activeController) activeController.abort()
       if (turnTimeout) clearTimeout(turnTimeout)
       activeController = new AbortController()
-      // Safety timeout: auto-abort after 5 minutes to prevent runaway turns.
+      // Safety timeout: auto-abort after 10 minutes to prevent runaway turns.
       turnTimeout = setTimeout(() => {
         activeController?.abort()
         activeController = null
         turnTimeout = null
-      }, 5 * 60 * 1000)
+      }, 10 * 60 * 1000)
 
       const project = projectRegistry.get()
       const activeSession = projectRegistry.getActiveSession()

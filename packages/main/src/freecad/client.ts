@@ -87,14 +87,22 @@ export async function toolInvoke<T = unknown>(
         console.warn('[client] viewport export failed for', toolId, err)
       })
   }
-  // The Python runner now includes `_viewport_gltf` and `_viewport_bytes` in
-  // every tool_invoke response (for non-readonly tools). Extract them and
-  // forward to the viewport callback synchronously — no separate round-trip.
-  const responseData = ok.data as Record<string, unknown>
-  if (_viewportCb && responseData?.['_viewport_gltf']) {
-    const gltfBase64 = String(responseData['_viewport_gltf'])
-    const bytes = Number(responseData['_viewport_bytes'] ?? 0)
+  // The Python runner now includes `_viewport_gltf` and `_viewport_bytes`
+  // and `_readonly` in every tool_invoke response. Extract for the viewport
+  // callback, then strip internal fields before returning to the agent loop
+  // — the LLM must NOT see base64 glTF data or internal flags.
+  const raw = ok.data as Record<string, unknown> | null
+  if (raw && _viewportCb && typeof raw['_viewport_gltf'] === 'string') {
+    const gltfBase64 = raw['_viewport_gltf'] as string
+    const bytes = typeof raw['_viewport_bytes'] === 'number' ? (raw['_viewport_bytes'] as number) : 0
     _viewportCb(gltfBase64, bytes || Math.floor((gltfBase64.length * 3) / 4))
   }
-  return responseData as T
+  // Strip internal fields
+  const clean = { ...raw } as Record<string, unknown> | null
+  if (clean) {
+    delete clean['_viewport_gltf']
+    delete clean['_viewport_bytes']
+    delete clean['_readonly']
+  }
+  return clean as T
 }
