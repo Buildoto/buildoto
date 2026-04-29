@@ -16,7 +16,7 @@ Exemples :
   refactor: extrait la logique de dalle dans une fonction`
 
 export interface CommitMessageInput {
-  apiKey: string
+  apiKey?: string
   code: string
   stdoutPreview: string
   filesChanged: string[]

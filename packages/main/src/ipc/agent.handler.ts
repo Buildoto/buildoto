@@ -77,7 +77,6 @@ export function registerAgentHandlers(window: BrowserWindow) {
         emit({ type: 'error', message: msg })
         return { stopReason: 'error' }
       }
-      const anthropicKey = await getApiKey('anthropic')
       const hasCredential =
         providerId === 'ollama'
           ? true
@@ -131,12 +130,17 @@ export function registerAgentHandlers(window: BrowserWindow) {
           },
           onViewportUpdate: (gltfBase64, bytes) =>
             emit({ type: 'viewport_update', gltfBase64, bytes }),
-          onGeneration: project && anthropicKey
+          onGeneration: project
             ? async (payload) => {
+                // Try the active provider's key for commit message generation.
+                // buildoto-ai uses JWT auth (no API key) — skip key lookup for it.
+                const commitKey = turnState.providerId !== 'buildoto-ai'
+                  ? await getApiKey(turnState.providerId).catch(() => null)
+                  : null
                 const file = await handleGeneration({
                   project,
                   payload,
-                  apiKey: anthropicKey,
+                  apiKey: commitKey || undefined,
                   emit,
                 })
                 if (file) generationFiles.push(file)
@@ -260,7 +264,7 @@ interface HandleGenerationArgs {
     stderr: string
     durationMs: number
   }
-  apiKey: string
+  apiKey?: string
   emit: (event: AgentEvent) => void
 }
 
