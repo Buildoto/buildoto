@@ -16,12 +16,13 @@ export interface LegacyToolContext {
 export const EXECUTE_PYTHON_FREECAD_ID = 'execute_python_freecad'
 
 const DESCRIPTION =
-  'Execute Python code inside the bundled FreeCAD interpreter. A document named "Buildoto" ' +
-  'is auto-created and active. Namespace provides App (= FreeCAD), FreeCAD, doc, Part, Draft, ' +
-  'Arch, Sketcher, and Spreadsheet when available. doc.recompute() runs automatically after. ' +
-  'Return value JSON: { stdout, stderr, duration_ms, viewport_updated }. Units are millimetres. ' +
-  'Prefer the structured workbench tools (sketcher_*, part_*, draft_*, arch_*) when they fit; ' +
-  'use this as a fallback for list comprehensions, loops, unusual property access.'
+  'Exécute du code Python dans FreeCAD. Un fichier .py est automatiquement créé dans ' +
+  'le dossier generations/ du projet. Namespace : App (= FreeCAD), FreeCAD, doc, Part, ' +
+  'Draft, Arch, Sketcher, Spreadsheet. doc.recompute() et export 3D automatiques. ' +
+  'Unités : millimètres. Retour JSON : { stdout, stderr, duration_ms, object_id }. ' +
+  'Utilise cet outil pour TOUTE demande de l\'utilisateur — il est l\'outil principal ' +
+  'et universel. Ne passe pas par les outils spécialisés (part_*, arch_*, etc.) car ' +
+  'ils ne créent pas de fichier .py visible dans l\'arborescence du projet.'
 
 const inputSchema = z.object({
   code: z
