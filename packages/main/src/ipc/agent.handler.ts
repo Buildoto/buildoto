@@ -26,6 +26,14 @@ import type { Project, ProviderId, AgentMode } from '@buildoto/shared'
 
 let fallbackHistory: CoreMessageEntry[] = []
 let activeController: AbortController | null = null
+let turnTimeout: NodeJS.Timeout | null = null
+
+function isAbortError(err: unknown): boolean {
+  if (err instanceof Error && err.name === 'AbortError') return true
+  if (err instanceof Error && err.message.toLowerCase().includes('abort')) return true
+  if (err instanceof DOMException && err.name === 'AbortError') return true
+  return false
+}
 
 async function persistAgentConfig(
   project: Project,
@@ -93,7 +101,14 @@ export function registerAgentHandlers(window: BrowserWindow) {
       }
 
       if (activeController) activeController.abort()
+      if (turnTimeout) clearTimeout(turnTimeout)
       activeController = new AbortController()
+      // Safety timeout: auto-abort after 5 minutes to prevent runaway turns.
+      turnTimeout = setTimeout(() => {
+        activeController?.abort()
+        activeController = null
+        turnTimeout = null
+      }, 5 * 60 * 1000)
 
       const project = projectRegistry.get()
       const activeSession = projectRegistry.getActiveSession()
@@ -162,7 +177,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
         }
         return { stopReason: result.stopReason }
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (isAbortError(err)) {
           emit({ type: 'canceled' })
           return { stopReason: 'canceled' }
         }
@@ -178,6 +193,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
         return { stopReason: 'error' }
       } finally {
         activeController = null
+        if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null }
       }
     },
   )
@@ -185,6 +201,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
   ipcMain.handle(IpcChannels.AGENT_ABORT, () => {
     activeController?.abort()
     activeController = null
+    if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null }
   })
 
   ipcMain.handle(
