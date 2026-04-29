@@ -63,6 +63,12 @@ async function hydrateAdapterFromProject(project: Project): Promise<void> {
   }
 }
 
+function safeHandle(channel: string, handler: (...args: never[]) => unknown) {
+  try { ipcMain.handle(channel, handler as (...args: unknown[]) => unknown) } catch {
+    // Already registered (macOS Activate event re-creates window) — ignore.
+  }
+}
+
 export function registerAgentHandlers(window: BrowserWindow) {
   openCodeAdapter.init()
 
@@ -74,7 +80,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
     if (project) void hydrateAdapterFromProject(project)
   })
 
-  ipcMain.handle(
+  safeHandle(
     IpcChannels.AGENT_RUN_TURN,
     async (_e, req: AgentRunTurnRequest): Promise<AgentRunTurnResult> => {
       const { providerId, model } = openCodeAdapter.getState()
@@ -198,15 +204,15 @@ export function registerAgentHandlers(window: BrowserWindow) {
     },
   )
 
-  ipcMain.handle(IpcChannels.AGENT_ABORT, () => {
+  safeHandle(IpcChannels.AGENT_ABORT, () => {
     activeController?.abort()
     activeController = null
     if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null }
   })
 
-  ipcMain.handle(
+  safeHandle(
     IpcChannels.AGENT_SET_PROVIDER,
-    async (_e, req: AgentSetProviderRequest): Promise<AgentState> => {
+    async (_e: unknown, req: AgentSetProviderRequest): Promise<AgentState> => {
       const state = openCodeAdapter.setProvider(req.providerId, req.model)
       const project = projectRegistry.get()
       if (project) {
@@ -225,9 +231,9 @@ export function registerAgentHandlers(window: BrowserWindow) {
     },
   )
 
-  ipcMain.handle(
+  safeHandle(
     IpcChannels.AGENT_SET_MODE,
-    async (_e, req: AgentSetModeRequest): Promise<AgentState> => {
+    async (_e: unknown, req: AgentSetModeRequest): Promise<AgentState> => {
       const state = openCodeAdapter.setMode(req.mode)
       const project = projectRegistry.get()
       if (project) {
@@ -240,7 +246,7 @@ export function registerAgentHandlers(window: BrowserWindow) {
     },
   )
 
-  ipcMain.handle(IpcChannels.AGENT_GET_STATE, (): AgentState => openCodeAdapter.getState())
+  safeHandle(IpcChannels.AGENT_GET_STATE, (): AgentState => openCodeAdapter.getState())
 }
 
 async function persistEventToSession(

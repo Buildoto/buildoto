@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
-import { BrowserWindow, Menu, app, shell } from 'electron'
+import { BrowserWindow, Menu, app, ipcMain, shell } from 'electron'
 
 import { IpcChannels, type MenuAction } from '@buildoto/shared'
 import { buildotoAuth } from './auth/buildoto'
@@ -33,6 +33,14 @@ import { projectRegistry } from './project/registry'
 import { store } from './store/settings'
 import { initSentry } from './telemetry/sentry'
 import { shutdownTelemetry } from './telemetry/posthog'
+
+// Make ipcMain.handle idempotent so register*Handlers() can be called multiple
+// times without crashing (macOS activate event re-creates the window).
+const _origHandle = ipcMain.handle.bind(ipcMain)
+ipcMain.handle = ((channel: string, handler: (...args: unknown[]) => unknown) => {
+  try { _origHandle(channel, handler) } catch { /* already registered — safe */ }
+  return ipcMain
+}) as typeof ipcMain.handle
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const IS_DEV = !app.isPackaged
