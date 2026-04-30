@@ -16,6 +16,7 @@ import io
 import json
 import os
 import socket
+import struct
 import sys
 import time
 import traceback
@@ -92,29 +93,108 @@ def _exec_python(code: str, timeout_ms: int) -> dict:
     }
 
 
+def _mesh_to_glb(objects: list) -> bytes:
+    """Build a minimal binary glTF from FreeCAD objects with Shape.
+    
+    Works without the optional import_glTF module. Uses shape.tessellate()
+    which is available in every FreeCAD build.
+    Returns the raw .glb bytes."""
+    vertices = []  # flat [x,y,z, x,y,z, ...]
+    indices = []   # flat [i,j,k, i,j,k, ...]
+    offset = 0
+
+    for obj in objects:
+        try:
+            shape = obj.Shape
+            if shape is None or shape.isNull():
+                continue
+            # Tessellate with a fine linear deflection
+            mesh_data = shape.tessellate(1.0)  # 1 mm deflection
+            verts = mesh_data[0]  # list of Vector
+            faces = mesh_data[1]  # list of tuples (i,j,k)
+            for v in verts:
+                vertices.extend([v.x, v.y, v.z])
+            for f in faces:
+                indices.extend([f[0] + offset, f[1] + offset, f[2] + offset])
+            offset += len(verts)
+        except Exception:
+            continue
+
+    if not vertices or not indices:
+        # Return minimal empty GLB
+        return b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
+
+    # Pack into binary glTF
+    # JSON chunk (minimal glTF with mesh, accessors, bufferView)
+    vert_bytes = struct.pack(f"<{len(vertices)}f", *vertices)
+    idx_bytes = struct.pack(f"<{len(indices)}I", *indices)
+    bin_data = vert_bytes + idx_bytes
+
+    json_str = json.dumps({
+        "asset": {"version": "2.0", "generator": "buildoto"},
+        "scene": 0,
+        "scenes": [{"nodes": [0]}],
+        "nodes": [{"mesh": 0}],
+        "meshes": [{
+            "primitives": [{
+                "attributes": {"POSITION": 0},
+                "indices": 1,
+            }],
+        }],
+        "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": len(vertices) // 3,
+             "type": "VEC3", "min": [0, 0, 0], "max": [0, 0, 0]},
+            {"bufferView": 1, "componentType": 5125, "count": len(indices),
+             "type": "SCALAR", "min": [0], "max": [len(indices) - 1]},
+        ],
+        "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": len(vert_bytes),
+             "target": 34962},
+            {"buffer": 0, "byteOffset": len(vert_bytes), "byteLength": len(idx_bytes),
+             "target": 34963},
+        ],
+        "buffers": [{
+            "byteLength": len(bin_data),
+        }],
+    }, separators=(",", ":"))
+
+    json_bytes = json_str.encode("utf-8")
+    # Pad to 4 bytes
+    while len(json_bytes) % 4:
+        json_bytes += b" "
+    while len(bin_data) % 4:
+        bin_data += b"\x00"
+
+    # Build GLB
+    glb = struct.pack("<I", 0x46546C67)  # magic glTF
+    glb += struct.pack("<I", 2)           # version 2
+    total = 12 + 8 + len(json_bytes) + 8 + len(bin_data)
+    glb += struct.pack("<I", total)       # total length
+    glb += struct.pack("<I", len(json_bytes))
+    glb += struct.pack("<I", 0x4E4F534A)  # JSON chunk type
+    glb += json_bytes
+    glb += struct.pack("<I", len(bin_data))
+    glb += struct.pack("<I", 0x004E4942)  # BIN chunk type
+    glb += bin_data
+    return glb
+
+
 def _export_gltf(doc_name: str | None) -> dict:
     target_doc = FreeCAD.getDocument(doc_name) if doc_name else FreeCAD.ActiveDocument
     if target_doc is None:
         return {"error": "DOCUMENT_NOT_FOUND", "message": f"document {doc_name!r} not found"}
 
-    objects = [o for o in target_doc.Objects if hasattr(o, "Shape")]
+    objects = [o for o in target_doc.Objects if hasattr(o, "Shape") and o.Shape and not o.Shape.isNull()]
     if not objects:
-        # Export an empty glb anyway — the viewer can render nothing without crashing.
-        empty_glb = b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
         return {
-            "data": base64.b64encode(empty_glb).decode("ascii"),
-            "bytes": len(empty_glb),
+            "data": base64.b64encode(
+                b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
+            ).decode("ascii"),
+            "bytes": 12,
         }
 
-    tmp_path = os.path.join(FreeCAD.ConfigGet("UserAppData") or "/tmp", f"buildoto-export-{int(time.time() * 1000)}.glb")
-    Import.export(objects, tmp_path)
-    with open(tmp_path, "rb") as fh:
-        data = fh.read()
-    try:
-        os.remove(tmp_path)
-    except OSError:
-        pass
-    return {"data": base64.b64encode(data).decode("ascii"), "bytes": len(data)}
+    glb_bytes = _mesh_to_glb(objects)
+    return {"data": base64.b64encode(glb_bytes).decode("ascii"), "bytes": len(glb_bytes)}
 
 
 def _handle(msg: dict) -> dict:
