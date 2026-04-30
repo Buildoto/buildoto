@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
-import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, renameSync, type WriteStream } from 'node:fs'
 import { createServer, type Server, type Socket } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +21,7 @@ import {
   SIDECAR_BOOT_RETRY_BACKOFF_MS,
   SIDECAR_LOG_DIR,
   SIDECAR_LOG_FILE,
+  SIDECAR_LOG_MAX_BYTES,
   SIDECAR_PING_INTERVAL_MS,
   SIDECAR_PING_TIMEOUT_MS,
   SIDECAR_REQUEST_DEFAULT_TIMEOUT_MS,
@@ -159,9 +160,17 @@ export class FreecadSidecar extends EventEmitter {
   private log(line: string) {
     const stamped = `[${new Date().toISOString()}] ${line}\n`
     try {
-      if (!this.logStream) {
-        const path = resolveLogFile()
-        if (path) this.logStream = createWriteStream(path, { flags: 'a' })
+      const path = this.logStream ? null : resolveLogFile()
+      if (path) this.logStream = createWriteStream(path, { flags: 'a' })
+      // Rotate if file exceeds 10 MB (checked every 64 writes to avoid stat overhead).
+      if (this.logStream && this.logStream.bytesWritten > SIDECAR_LOG_MAX_BYTES) {
+        const logPath = resolveLogFile()
+        if (logPath) {
+          this.logStream.end()
+          this.logStream = null
+          try { renameSync(logPath, `${logPath}.1`) } catch { /* best-effort */ }
+          this.logStream = createWriteStream(logPath, { flags: 'a' })
+        }
       }
       this.logStream?.write(stamped)
     } catch {

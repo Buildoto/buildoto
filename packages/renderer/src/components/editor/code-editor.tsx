@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useProjectStore } from '@/stores/project-store'
+import { useSettingsStore } from '@/stores/settings-store'
 
 const MonacoEditor = lazy(() =>
   import('@monaco-editor/react').then((m) => ({ default: m.default })),
@@ -17,6 +18,7 @@ export function CodeEditor({ relativePath }: CodeEditorProps) {
   const [dirty, setDirty] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const appTheme = useSettingsStore((s) => s.theme)
   const [encoding, setEncoding] = useState<'utf-8' | 'base64'>('utf-8')
 
   useEffect(() => {
@@ -112,7 +114,7 @@ export function CodeEditor({ relativePath }: CodeEditorProps) {
         >
           <MonacoEditor
             height="100%"
-            theme="vs-dark"
+            theme={appTheme === 'light' ? 'vs' : 'vs-dark'}
             language={guessLanguage(relativePath)}
             value={content}
             options={{

@@ -81,6 +81,7 @@ export const ERR_NO_STAGED_CHANGES = 'Aucune modification à valider.'
 export const SIDECAR_AUTO_RESTART_MAX_ATTEMPTS = 3
 export const SIDECAR_LOG_DIR = '.buildoto-logs'
 export const SIDECAR_LOG_FILE = 'freecad-sidecar.log'
+export const SIDECAR_LOG_MAX_BYTES = 10 * 1024 * 1024
 export const SIDECAR_REQUEST_DEFAULT_TIMEOUT_MS = 60_000
 export const FREECAD_RESOURCES_DIR = 'resources/freecad'
 export const FREECAD_RUNNER_SCRIPT = 'runner.py'
