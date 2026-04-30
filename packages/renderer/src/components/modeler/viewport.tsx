@@ -5,7 +5,8 @@ import { GltfScene } from './gltf-loader'
 import { useSessionStore } from '@/stores/session-store'
 
 export function Viewport() {
-  const hasGeometry = useSessionStore((s) => !!s.gltfBase64)
+  const gltfBase64 = useSessionStore((s) => s.gltfBase64)
+  const hasGeometry = !!gltfBase64
 
   return (
     <div className="relative h-full w-full">
@@ -26,13 +27,18 @@ export function Viewport() {
         />
         <axesHelper args={[2]} />
         <Suspense fallback={null}>
-          <GltfScene />
+          {hasGeometry && <GltfScene />}
         </Suspense>
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} />
       </Canvas>
       {!hasGeometry && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Aucune géométrie — demande à l'agent de construire quelque chose.</p>
+        </div>
+      )}
+      {hasGeometry && (
+        <div className="absolute bottom-2 right-2 rounded bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+          glTF {Math.round(gltfBase64.length / 1024)} Ko
         </div>
       )}
     </div>
