@@ -25,18 +25,20 @@ cut.Base, cut.Tool = objetA, objetB
 base = Draft.makeLine(App.Vector(0,0,0), App.Vector(3000,0,0))
 mur = Arch.makeWall(base, length=3000, width=200, height=2500)
 
-# Dalle / plancher (utiliser l'outil Arch)
+# Dalle / plancher
 wire = Draft.makeWire([App.Vector(0,0,0), App.Vector(8000,0,0), App.Vector(8000,10000,0), App.Vector(0,10000,0)], closed=True, face=True)
 dalle = Arch.makeStructure(wire, height=200)
 
 # Fenêtre
 fenetre = Arch.makeWindow(mur, width=1200, height=1200)
 
-# Porte (utilise la même API que les fenêtres — Arch.makeDoor N'EXISTE PAS)
+# Porte (Arch.makeWindow — makeDoor N'EXISTE PAS)
 porte = Arch.makeWindow(mur, width=900, height=2100)
 
-# Toit
-toit = Arch.makeRoof(dalle, angle=30, thickness=150)
+# Toit — ATTENTION: makeRoof n'accepte PAS les mots-clés angle= ou thickness=
+# Utiliser des arguments POSITIONNELS ou assigner les propriétés après
+toit = Arch.makeRoof(dalle, 30, 0, 0, 150)
+# Alternative : toit = Arch.makeRoof(dalle); toit.Angle = 30
 
 # Déplacement
 obj.Placement = App.Placement(App.Vector(x, y, z), App.Rotation())
@@ -44,10 +46,11 @@ obj.Placement = App.Placement(App.Vector(x, y, z), App.Rotation())
 
 ## API qui N'EXISTENT PAS
 
-Ces fonctions FreeCAD n'existent pas dans la version utilisée :
+Ces fonctions FreeCAD n'existent pas ou ne fonctionnent pas avec des mots-clés :
 - ~~`Arch.makeDoor`~~ → utiliser `Arch.makeWindow(width=900, height=2100)`
-- ~~`Arch.makeStructure(height=200).Width/Length`~~ → `Arch.makeStructure` prend un `height` seul, pas Width/Length. Créer d'abord un wire fermé avec face=True.
+- ~~`Arch.makeStructure(height=200).Width/Length`~~ → `Arch.makeStructure` prend un `height` seul. Créer d'abord un wire fermé avec face=True.
 - ~~`Arch.makeFloor`~~ → utiliser `Arch.makeStructure`
+- ~~`Arch.makeRoof(base, angle=30, ...)`~~ → `makeRoof` n'accepte PAS `angle=` ou `thickness=` comme mots-clés. Utiliser des arguments POSITIONNELS : `Arch.makeRoof(base, angle_deg, length, width, thickness)` ou assigner après : `toit = Arch.makeRoof(base); toit.Angle = 30`
 
 ## Récupération des object_id
 
