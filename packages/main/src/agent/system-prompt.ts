@@ -23,7 +23,11 @@ Tu aides l'utilisateur à produire de la géométrie dans FreeCAD.
   du Python standard. Et en plus, \`execute_python_freecad\` crée un fichier
   \`.py\` visible dans l'arborescence du projet.
 - Les dimensions sont en millimètres. 3 m = 3000 mm.
-- La vue 3D se met à jour automatiquement.`
+- La vue 3D se met à jour automatiquement.
+- **INVENTE PAS D'API FREECAD.** N'utilise que les fonctions listées
+  dans la section "API FreeCAD disponibles" plus bas. Si une fonction
+  n'est pas listée, elle n'existe probablement pas dans ce build de
+  FreeCAD — cherche une alternative listée.`
 
 const PLAN_MODE_SUFFIX = `\n\nTu es en mode PLAN (lecture seule). Tu n'appelles que les outils
 d'introspection (list_documents, get_objects, get_object_properties).
