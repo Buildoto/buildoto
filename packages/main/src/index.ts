@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
-import { BrowserWindow, Menu, app, ipcMain, shell } from 'electron'
+import { BrowserWindow, Menu, app, shell } from 'electron'
 
 import { IpcChannels, type MenuAction } from '@buildoto/shared'
 import { buildotoAuth } from './auth/buildoto'
@@ -33,14 +33,6 @@ import { projectRegistry } from './project/registry'
 import { store } from './store/settings'
 import { initSentry } from './telemetry/sentry'
 import { shutdownTelemetry } from './telemetry/posthog'
-
-// Make ipcMain.handle idempotent so register*Handlers() can be called multiple
-// times without crashing (macOS activate event re-creates the window).
-const _origHandle = ipcMain.handle.bind(ipcMain)
-ipcMain.handle = ((channel: string, handler: (...args: unknown[]) => unknown) => {
-  try { _origHandle(channel, handler) } catch { /* already registered — safe */ }
-  return ipcMain
-}) as typeof ipcMain.handle
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const IS_DEV = !app.isPackaged
@@ -303,17 +295,28 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
+// Wrapper qui ignore les erreurs de double-enregistrement IPC.
+// Les ipcMain.handle() survivent à la fermeture de fenêtre (process-global).
+// Sur macOS, l'événement 'activate' peut être déclenché après avoir fermé
+// la fenêtre, ce qui nous amène à ré-enregistrer des handlers déjà existants.
+function safeRegister<T extends (...args: never[]) => void>(fn: T, ...args: Parameters<T>) {
+  try { fn(...args) } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('second handler')) return
+    throw e
+  }
+}
+
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     mainWindow = createWindow()
-    registerAgentHandlers(mainWindow)
-    registerFreecadHandlers(mainWindow)
-    registerProjectHandlers(mainWindow)
-    registerGitHandlers(mainWindow)
-    registerMcpHandlers(mainWindow)
-    registerUpdaterHandlers(mainWindow)
-    registerBuildotoAuthHandlers(mainWindow)
-    registerBuildotoUsageHandlers(mainWindow)
+    safeRegister(registerAgentHandlers, mainWindow)
+    safeRegister(registerFreecadHandlers, mainWindow)
+    safeRegister(registerProjectHandlers, mainWindow)
+    safeRegister(registerGitHandlers, mainWindow)
+    safeRegister(registerMcpHandlers, mainWindow)
+    safeRegister(registerUpdaterHandlers, mainWindow)
+    safeRegister(registerBuildotoAuthHandlers, mainWindow)
+    safeRegister(registerBuildotoUsageHandlers, mainWindow)
   }
 })
 

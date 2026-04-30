@@ -64,8 +64,8 @@ async function hydrateAdapterFromProject(project: Project): Promise<void> {
 }
 
 function safeHandle(channel: string, handler: (...args: never[]) => unknown) {
-  try { ipcMain.handle(channel, handler as (...args: unknown[]) => unknown) } catch {
-    // Already registered (macOS Activate event re-creates window) — ignore.
+  try { ipcMain.handle(channel, handler as (...args: unknown[]) => unknown) } catch (e: unknown) {
+    if (e instanceof Error && !e.message.includes('second handler')) throw e
   }
 }
 
