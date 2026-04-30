@@ -121,41 +121,54 @@ def _mesh_to_glb(objects: list) -> bytes:
             continue
 
     if not vertices or not indices:
-        # Return minimal empty GLB
         return b"glTF" + (0x00000002).to_bytes(4, "little") + (0).to_bytes(4, "little")
 
+    vertex_count = len(vertices) // 3
+    index_count = len(indices)
+
+    # Compute bounding box
+    min_x = min_y = min_z = float("inf")
+    max_x = max_y = max_z = float("-inf")
+    for i in range(0, len(vertices), 3):
+        x, y, z = vertices[i], vertices[i+1], vertices[i+2]
+        min_x = min(min_x, x)
+        min_y = min(min_y, y)
+        min_z = min(min_z, z)
+        max_x = max(max_x, x)
+        max_y = max(max_y, y)
+        max_z = max(max_z, z)
+
     # Pack into binary glTF
-    # JSON chunk (minimal glTF with mesh, accessors, bufferView)
     vert_bytes = struct.pack(f"<{len(vertices)}f", *vertices)
     idx_bytes = struct.pack(f"<{len(indices)}I", *indices)
     bin_data = vert_bytes + idx_bytes
+
+    max_index = max(indices) if indices else 0
 
     json_str = json.dumps({
         "asset": {"version": "2.0", "generator": "buildoto"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
         "nodes": [{"mesh": 0}],
-        "meshes": [{
-            "primitives": [{
-                "attributes": {"POSITION": 0},
-                "indices": 1,
-            }],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "material": 0}]}],
+        "materials": [{
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [0.6, 0.6, 0.65, 1.0],
+                "metallicFactor": 0.2,
+                "roughnessFactor": 0.6,
+            },
         }],
         "accessors": [
-            {"bufferView": 0, "componentType": 5126, "count": len(vertices) // 3,
-             "type": "VEC3", "min": [0, 0, 0], "max": [0, 0, 0]},
-            {"bufferView": 1, "componentType": 5125, "count": len(indices),
-             "type": "SCALAR", "min": [0], "max": [len(indices) - 1]},
+            {"bufferView": 0, "componentType": 5126, "count": vertex_count,
+             "type": "VEC3", "min": [min_x, min_y, min_z], "max": [max_x, max_y, max_z]},
+            {"bufferView": 1, "componentType": 5125, "count": index_count,
+             "type": "SCALAR", "min": [0], "max": [max_index]},
         ],
         "bufferViews": [
-            {"buffer": 0, "byteOffset": 0, "byteLength": len(vert_bytes),
-             "target": 34962},
-            {"buffer": 0, "byteOffset": len(vert_bytes), "byteLength": len(idx_bytes),
-             "target": 34963},
+            {"buffer": 0, "byteOffset": 0, "byteLength": len(vert_bytes), "target": 34962},
+            {"buffer": 0, "byteOffset": len(vert_bytes), "byteLength": len(idx_bytes), "target": 34963},
         ],
-        "buffers": [{
-            "byteLength": len(bin_data),
-        }],
+        "buffers": [{"byteLength": len(bin_data)}],
     }, separators=(",", ":"))
 
     json_bytes = json_str.encode("utf-8")
